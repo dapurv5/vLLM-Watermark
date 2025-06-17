@@ -1,0 +1,24 @@
+name: vllm-watermark
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+    - uv
+    - black
+    - isort
+    - mypy
+    - pre-commit
+    - pytest
+    - pytest-cov
+    - sphinx
+    - sphinx-rtd-theme
+    - build
+    - twine
+    - torch>=2.0.0
+    - transformers>=4.30.0
+    - vllm>=0.2.0
+    - sglang>=0.1.0
+    - numpy>=1.20.0
