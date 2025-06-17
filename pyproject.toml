@@ -65,7 +65,7 @@ disallow_incomplete_defs = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --cov=vllm_watermark"
+addopts = "-v"
 
 [tool.coverage.run]
 source = ["vllm_watermark"]

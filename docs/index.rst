@@ -36,16 +36,18 @@ Here's a quick example of how to use vLLM-Watermark:
 
 .. code-block:: python
 
-   from vllm_watermark import WatermarkFactory
+   from vllm_watermark import WatermarkGenerator, WatermarkDetector
 
    # Create a watermarking algorithm instance
-   watermark = WatermarkFactory.create("kgw", gamma=0.5, delta=2.0)
+   llm = LLM(model="meta-llama/Llama-3.2-1B") # vLLM model
+   wm_llm = WatermarkGenerator.create(llm, "kgw", gamma=0.5, delta=2.0)
 
-   # Apply watermarking to logits
-   watermarked_logits = watermark.apply(logits)
+   # Apply watermarking while generating
+   watermarked_logits = wm_llm.generate(prompt)
 
+   kgw_detector = WatermarkDetector.create("kgw", gamma=0.5, delta=2.0)
    # Detect watermark in text
-   result = watermark.detect(text)
+   result = kgw_detector.detect(watermarked_logits)
 
 Indices and tables
 ==================

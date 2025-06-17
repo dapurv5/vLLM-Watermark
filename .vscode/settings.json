@@ -1,1 +1,9 @@
- 
+
+{
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/external/vllm"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/external/vllm"
+    ]
+}
