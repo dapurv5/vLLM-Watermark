@@ -1,4 +1,5 @@
 import torch
+from loguru import logger
 from vllm.entrypoints.llm import LLM
 
 from vllm_watermark.watermark_generators.base import BaseGenerator
@@ -8,17 +9,18 @@ from vllm_watermark.watermark_generators.gumbel_generator import GumbelGenerator
 # Factory for creating watermarked LLMs
 class WatermarkedLLMs:
     @staticmethod
-    def create(model, algo: str = "gumbel", **kwargs) -> LLM:
+    def create(model, algo: str = "gumbel", debug: bool = False, **kwargs) -> LLM:
         if algo == "gumbel":
             generator = GumbelGenerator(model, model.get_tokenizer(), **kwargs)
-            return WatermarkedLLM(model, generator)
+            return WatermarkedLLM(model, generator, debug=debug)
         raise ValueError(f"Unknown watermarking algorithm: {algo}")
 
 
 class WatermarkedLLM:
-    def __init__(self, llm: LLM, generator: BaseGenerator):
+    def __init__(self, llm: LLM, generator: BaseGenerator, debug: bool = False):
         self.llm = llm
         self.generator = generator
+        self.debug = debug
         self._patch_vllm_sampling()
 
     def _find_and_patch_samplers(self):
@@ -29,7 +31,7 @@ class WatermarkedLLM:
         # Check if we're using V1 or V0 engine
         if hasattr(self.llm.llm_engine, "engine_core"):
             # V1 Engine structure: llm_engine.engine_core.model_executor
-            print("Detected V1 engine structure")
+            logger.info("Detected V1 engine structure")
 
             # Check if we're using multiprocessing mode (SyncMPClient)
             engine_core = self.llm.llm_engine.engine_core
@@ -105,7 +107,7 @@ class WatermarkedLLM:
 
         else:
             # V0 Engine structure: llm_engine.model_executor
-            print("Detected V0 engine structure")
+            logger.info("Detected V0 engine structure")
             if hasattr(self.llm.llm_engine, "model_executor"):
                 model_executor = self.llm.llm_engine.model_executor
 
@@ -141,23 +143,27 @@ class WatermarkedLLM:
                                 )
                             )
 
-        print(f"Found {len(possible_paths)} potential sampler paths:")
-        for path_name, model_runner in possible_paths:
-            print(f"  - {path_name}: sampler = {type(model_runner.sampler).__name__}")
+        if self.debug:
+            logger.debug(f"Found {len(possible_paths)} potential sampler paths:")
+            for path_name, model_runner in possible_paths:
+                logger.debug(
+                    f"  - {path_name}: sampler = {type(model_runner.sampler).__name__}"
+                )
 
         # Patch all found samplers
         for path_name, model_runner in possible_paths:
             if hasattr(model_runner, "sampler"):
-                print(f"Patching sampler at {path_name}")
+                if self.debug:
+                    logger.debug(f"Patching sampler at {path_name}")
                 original_sampler = model_runner.sampler
                 watermarked_sampler = self._create_watermarked_sampler()
                 model_runner.sampler = watermarked_sampler
-                print(
-                    f"Successfully patched sampler at {path_name}: {type(original_sampler).__name__} -> {type(watermarked_sampler).__name__}"
+                logger.info(
+                    f"Successfully patched sampler: {type(original_sampler).__name__} -> {type(watermarked_sampler).__name__}"
                 )
                 patched_count += 1
             else:
-                print(f"Warning: No sampler found at {path_name}")
+                logger.warning(f"No sampler found at {path_name}")
 
         return patched_count
 
@@ -170,7 +176,7 @@ class WatermarkedLLM:
             from vllm.v1.sample.sampler import Sampler as V1Sampler
 
             base_sampler_class = V1Sampler
-            print("Using V1 sampler")
+            logger.info("Using V1 sampler")
         except ImportError:
             try:
                 # Fall back to V0 sampler
@@ -178,7 +184,7 @@ class WatermarkedLLM:
                 from vllm.model_executor.sampling_metadata import SamplingMetadata
 
                 base_sampler_class = Sampler
-                print("Using V0 sampler")
+                logger.info("Using V0 sampler")
             except ImportError:
                 raise ImportError("Could not import any sampler class from vLLM")
 
@@ -191,8 +197,8 @@ class WatermarkedLLM:
                 logits: torch.Tensor,
                 sampling_metadata: SamplingMetadata,
             ):
-                print("=== WatermarkedSampler called ===")
-                print(f"Logits shape: {logits.shape}")
+                if watermark_llm.debug:
+                    logger.debug("WatermarkedSampler called")
 
                 # For V1, completely override the sampling process
                 return self.forward(logits, sampling_metadata)
@@ -202,18 +208,20 @@ class WatermarkedLLM:
                 logits: torch.Tensor,
                 sampling_metadata: SamplingMetadata,
             ):
-                print("=== WatermarkedSampler.forward called ===")
-                print(f"Logits shape: {logits.shape}")
+                if watermark_llm.debug:
+                    logger.debug("WatermarkedSampler.forward called")
 
                 # Import the SamplerOutput class based on vLLM version
                 try:
                     from vllm.v1.outputs import SamplerOutput
 
-                    print("Using V1 SamplerOutput")
+                    if watermark_llm.debug:
+                        logger.debug("Using V1 SamplerOutput")
                 except ImportError:
                     from vllm.model_executor.layers.sampler import SamplerOutput
 
-                    print("Using V0 SamplerOutput")
+                    if watermark_llm.debug:
+                        logger.debug("Using V0 SamplerOutput")
 
                 # Check if we should apply watermarking
                 should_watermark, temperature, top_p = self._should_apply_watermarking(
@@ -221,9 +229,10 @@ class WatermarkedLLM:
                 )
 
                 if should_watermark:
-                    print(
-                        f"Applying Gumbel watermarking with temp={temperature}, top_p={top_p}"
-                    )
+                    if watermark_llm.debug:
+                        logger.debug(
+                            f"Applying Gumbel watermarking with temp={temperature}, top_p={top_p}"
+                        )
 
                     # Build n-gram contexts
                     ngram_list = self._build_ngram_contexts(
@@ -238,14 +247,20 @@ class WatermarkedLLM:
                         sampled_tokens = watermark_llm.generator.sample_next(
                             logits, ngram_tokens, temperature, top_p
                         )
-                        print(f"Watermarked sampling produced tokens: {sampled_tokens}")
+                        if watermark_llm.debug:
+                            logger.debug(
+                                f"Watermarked sampling produced tokens: {sampled_tokens}"
+                            )
                     else:
-                        print(
+                        logger.warning(
                             "No n-gram context available, falling back to original sampler"
                         )
                         return super().forward(logits, sampling_metadata)
                 else:
-                    print("Watermarking not applicable, using original sampler")
+                    if watermark_llm.debug:
+                        logger.debug(
+                            "Watermarking not applicable, using original sampler"
+                        )
                     return super().forward(logits, sampling_metadata)
 
                 # Create SamplerOutput with our watermarked tokens
@@ -306,6 +321,9 @@ class WatermarkedLLM:
 
                 if hasattr(sampling_metadata, "seq_groups"):
                     # V0: Build from seq_groups
+                    if watermark_llm.debug:
+                        logger.debug("Using V0 sampling metadata structure")
+
                     for seq_group in sampling_metadata.seq_groups:
                         for seq_id in seq_group.seq_ids:
                             # Try to get token history
@@ -326,9 +344,15 @@ class WatermarkedLLM:
                                 0, watermark_llm.generator.ngram - len(token_history)
                             ) + token_history[-watermark_llm.generator.ngram :]
                             ngram_list.append(ngram)
+
+                            if watermark_llm.debug:
+                                logger.debug(f"Built V0 n-gram: {ngram}")
                 else:
                     # V1: Access token history from the worker's input batch
-                    print("V1 detected: Attempting to access real token history")
+                    if watermark_llm.debug:
+                        logger.debug(
+                            "V1 detected: Attempting to access real token history"
+                        )
 
                     # Try to access the input batch from the model runner
                     # The sampler is part of the model runner which has access to input_batch
@@ -357,11 +381,14 @@ class WatermarkedLLM:
                                             input_batch = (
                                                 worker.model_runner.input_batch
                                             )
-                                            print(
-                                                f"Found input_batch via engine_core path"
-                                            )
+                                            if watermark_llm.debug:
+                                                logger.debug(
+                                                    f"Found input_batch via engine_core path"
+                                                )
                     except Exception as e:
-                        print(f"Could not access input_batch via engine_core: {e}")
+                        logger.error(
+                            f"Could not access input_batch via engine_core: {e}"
+                        )
 
                     # Method 2: Try to get it from the current frame context (advanced reflection)
                     if input_batch is None:
@@ -376,19 +403,21 @@ class WatermarkedLLM:
                                     obj = frame_locals["self"]
                                     if hasattr(obj, "input_batch"):
                                         input_batch = obj.input_batch
-                                        print(
-                                            f"Found input_batch via stack inspection: {type(obj).__name__}"
-                                        )
+                                        if watermark_llm.debug:
+                                            logger.debug(
+                                                f"Found input_batch via stack inspection: {type(obj).__name__}"
+                                            )
                                         break
                         except Exception as e:
-                            print(
+                            logger.error(
                                 f"Could not access input_batch via stack inspection: {e}"
                             )
 
                     if input_batch is not None:
-                        print(
-                            f"Successfully found input_batch with {input_batch.num_reqs} requests"
-                        )
+                        if watermark_llm.debug:
+                            logger.debug(
+                                f"Successfully found input_batch with {input_batch.num_reqs} requests"
+                            )
 
                         # Build n-grams from real token history
                         for i in range(min(batch_size, input_batch.num_reqs)):
@@ -417,9 +446,10 @@ class WatermarkedLLM:
                                     # Build complete token history
                                     all_token_ids = prompt_token_ids + output_token_ids
 
-                                    print(
-                                        f"Request {i} ({req_id}): {len(prompt_token_ids)} prompt + {len(output_token_ids)} output = {len(all_token_ids)} total tokens"
-                                    )
+                                    if watermark_llm.debug:
+                                        logger.debug(
+                                            f"Request {i}: {len(all_token_ids)} total tokens"
+                                        )
 
                                     # Build n-gram context from the last n tokens
                                     if (
@@ -440,9 +470,10 @@ class WatermarkedLLM:
                                         ] * padding_needed + all_token_ids
 
                                     ngram_list.append(ngram)
-                                    print(f"Built n-gram for request {i}: {ngram}")
+                                    if watermark_llm.debug:
+                                        logger.debug(f"Built n-gram: {ngram}")
                                 else:
-                                    print(
+                                    logger.warning(
                                         f"Could not get token IDs for request {i}, using dummy context"
                                     )
                                     ngram = [
@@ -450,14 +481,16 @@ class WatermarkedLLM:
                                     ] * watermark_llm.generator.ngram
                                     ngram_list.append(ngram)
                             except Exception as e:
-                                print(f"Error building n-gram for request {i}: {e}")
+                                logger.error(
+                                    f"Error building n-gram for request {i}: {e}"
+                                )
                                 # Fallback to dummy context
                                 ngram = [
                                     watermark_llm.generator.pad_id
                                 ] * watermark_llm.generator.ngram
                                 ngram_list.append(ngram)
                     else:
-                        print(
+                        logger.warning(
                             "Could not access input_batch, falling back to dummy contexts"
                         )
                         # Fallback: Use dummy contexts
@@ -473,19 +506,25 @@ class WatermarkedLLM:
 
     def _patch_vllm_sampling(self):
         """Patch vLLM's sampling mechanism to include watermarking."""
-        print("Attempting to patch vLLM sampling...")
+        logger.info("Initializing watermarked sampling...")
 
         patched_count = self._find_and_patch_samplers()
 
         if patched_count > 0:
-            print(f"Successfully patched {patched_count} sampler(s)")
+            logger.info(f"Successfully patched {patched_count} sampler(s)")
         else:
-            print("Warning: No samplers were found and patched")
-            print("Available attributes on llm_engine:")
-            print(
-                [attr for attr in dir(self.llm.llm_engine) if not attr.startswith("_")]
-            )
+            logger.warning("Warning: No samplers were found and patched")
+            if self.debug:
+                logger.debug("Available attributes on llm_engine:")
+                logger.debug(
+                    [
+                        attr
+                        for attr in dir(self.llm.llm_engine)
+                        if not attr.startswith("_")
+                    ]
+                )
 
     def generate(self, *args, **kwargs):
-        print("WatermarkedLLM.generate called with kwargs:", kwargs)
+        if self.debug:
+            logger.debug("WatermarkedLLM.generate called")
         return self.llm.generate(*args, **kwargs)

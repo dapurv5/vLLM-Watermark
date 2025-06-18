@@ -71,7 +71,6 @@ class GumbelGenerator(BaseGenerator):
         top_p: float = 0.95,
     ) -> torch.LongTensor:  # Return token IDs
         if temperature > 0:
-            print("inside sampling next for gumbel generator.......")
             probs = torch.softmax(logits / temperature, dim=-1)
             probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
             probs_sum = torch.cumsum(probs_sort, dim=-1)
