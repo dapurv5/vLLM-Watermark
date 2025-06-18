@@ -327,13 +327,145 @@ class WatermarkedLLM:
                             ) + token_history[-watermark_llm.generator.ngram :]
                             ngram_list.append(ngram)
                 else:
-                    # V1: Use dummy contexts (limitation)
-                    print("V1 detected: Using dummy n-gram context")
-                    for i in range(batch_size):
-                        ngram = [
-                            watermark_llm.generator.pad_id
-                        ] * watermark_llm.generator.ngram
-                        ngram_list.append(ngram)
+                    # V1: Access token history from the worker's input batch
+                    print("V1 detected: Attempting to access real token history")
+
+                    # Try to access the input batch from the model runner
+                    # The sampler is part of the model runner which has access to input_batch
+                    input_batch = None
+
+                    # Try to find the input batch through various possible paths
+                    try:
+                        # Method 1: Check if we can access it through the engine's model executor
+                        if hasattr(watermark_llm.llm, "llm_engine"):
+                            engine = watermark_llm.llm.llm_engine
+                            if hasattr(engine, "engine_core") and hasattr(
+                                engine.engine_core, "engine_core"
+                            ):
+                                engine_core = engine.engine_core.engine_core
+                                if hasattr(engine_core, "model_executor"):
+                                    model_executor = engine_core.model_executor
+                                    if hasattr(
+                                        model_executor, "driver_worker"
+                                    ) and hasattr(
+                                        model_executor.driver_worker, "worker"
+                                    ):
+                                        worker = model_executor.driver_worker.worker
+                                        if hasattr(worker, "model_runner") and hasattr(
+                                            worker.model_runner, "input_batch"
+                                        ):
+                                            input_batch = (
+                                                worker.model_runner.input_batch
+                                            )
+                                            print(
+                                                f"Found input_batch via engine_core path"
+                                            )
+                    except Exception as e:
+                        print(f"Could not access input_batch via engine_core: {e}")
+
+                    # Method 2: Try to get it from the current frame context (advanced reflection)
+                    if input_batch is None:
+                        try:
+                            import inspect
+
+                            # Look up the call stack to find the model runner
+                            for frame_info in inspect.stack():
+                                frame_locals = frame_info.frame.f_locals
+                                # Look for 'self' that might be a model runner with input_batch
+                                if "self" in frame_locals:
+                                    obj = frame_locals["self"]
+                                    if hasattr(obj, "input_batch"):
+                                        input_batch = obj.input_batch
+                                        print(
+                                            f"Found input_batch via stack inspection: {type(obj).__name__}"
+                                        )
+                                        break
+                        except Exception as e:
+                            print(
+                                f"Could not access input_batch via stack inspection: {e}"
+                            )
+
+                    if input_batch is not None:
+                        print(
+                            f"Successfully found input_batch with {input_batch.num_reqs} requests"
+                        )
+
+                        # Build n-grams from real token history
+                        for i in range(min(batch_size, input_batch.num_reqs)):
+                            try:
+                                req_id = input_batch.req_ids[i]
+                                # Get the cached request state for this request
+                                if hasattr(
+                                    input_batch, "req_output_token_ids"
+                                ) and i < len(input_batch.req_output_token_ids):
+                                    output_token_ids = (
+                                        input_batch.req_output_token_ids[i] or []
+                                    )
+                                    prompt_token_ids = []
+
+                                    # Extract prompt tokens
+                                    if hasattr(
+                                        input_batch, "token_ids_cpu"
+                                    ) and hasattr(input_batch, "num_prompt_tokens"):
+                                        num_prompt_tokens = (
+                                            input_batch.num_prompt_tokens[i]
+                                        )
+                                        prompt_token_ids = input_batch.token_ids_cpu[
+                                            i, :num_prompt_tokens
+                                        ].tolist()
+
+                                    # Build complete token history
+                                    all_token_ids = prompt_token_ids + output_token_ids
+
+                                    print(
+                                        f"Request {i} ({req_id}): {len(prompt_token_ids)} prompt + {len(output_token_ids)} output = {len(all_token_ids)} total tokens"
+                                    )
+
+                                    # Build n-gram context from the last n tokens
+                                    if (
+                                        len(all_token_ids)
+                                        >= watermark_llm.generator.ngram
+                                    ):
+                                        ngram = all_token_ids[
+                                            -watermark_llm.generator.ngram :
+                                        ]
+                                    else:
+                                        # Pad with pad_id if we don't have enough history
+                                        padding_needed = (
+                                            watermark_llm.generator.ngram
+                                            - len(all_token_ids)
+                                        )
+                                        ngram = [
+                                            watermark_llm.generator.pad_id
+                                        ] * padding_needed + all_token_ids
+
+                                    ngram_list.append(ngram)
+                                    print(f"Built n-gram for request {i}: {ngram}")
+                                else:
+                                    print(
+                                        f"Could not get token IDs for request {i}, using dummy context"
+                                    )
+                                    ngram = [
+                                        watermark_llm.generator.pad_id
+                                    ] * watermark_llm.generator.ngram
+                                    ngram_list.append(ngram)
+                            except Exception as e:
+                                print(f"Error building n-gram for request {i}: {e}")
+                                # Fallback to dummy context
+                                ngram = [
+                                    watermark_llm.generator.pad_id
+                                ] * watermark_llm.generator.ngram
+                                ngram_list.append(ngram)
+                    else:
+                        print(
+                            "Could not access input_batch, falling back to dummy contexts"
+                        )
+                        # Fallback: Use dummy contexts
+                        for i in range(batch_size):
+                            ngram = [
+                                watermark_llm.generator.pad_id
+                            ] * watermark_llm.generator.ngram
+                            ngram_list.append(ngram)
 
                 return ngram_list
 
