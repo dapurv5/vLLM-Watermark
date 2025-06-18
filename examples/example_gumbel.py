@@ -3,16 +3,15 @@ import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import torch
 from vllm import LLM, SamplingParams
 
-from vllm_watermark.watermark_generators.gumbel_generator import WatermarkGenerator
+from vllm_watermark.core import WatermarkedLLMs
 
 # Load the vLLM model
 llm = LLM(model="meta-llama/Llama-3.2-1B")
 
-# Create a Gumbel watermark generator (this wraps and patches the LLM)
-wm_llm = WatermarkGenerator.create(llm, algo="gumbel", seed=42)
+# Create a Gumbel watermarked LLM (this wraps and patches the LLM)
+wm_llm = WatermarkedLLMs.create(llm, algo="gumbel", seed=42, ngram=2)
 
 # Example prompt
 prompts = ["Write a short poem about Microsoft"]
