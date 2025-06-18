@@ -18,7 +18,15 @@ class GumbelGenerator(BaseGenerator):
         self.tokenizer = tokenizer
         self.model = model
         self.max_seq_len = 1024
+
+        # Handle pad_token_id - use eos_token_id as fallback if pad_token_id is None
         self.pad_id = tokenizer.pad_token_id
+        if self.pad_id is None:
+            self.pad_id = tokenizer.eos_token_id
+            if self.pad_id is None:
+                # Final fallback - use 0 (typically corresponds to some special token)
+                self.pad_id = 0
+
         self.eos_id = tokenizer.eos_token_id
         self.ngram = ngram
         self.salt_key = salt_key
@@ -61,8 +69,9 @@ class GumbelGenerator(BaseGenerator):
         ngram_tokens: torch.LongTensor,  # (bsz, ngram)
         temperature: float = 0.8,
         top_p: float = 0.95,
-    ) -> torch.LongTensor:
+    ) -> torch.LongTensor:  # Return token IDs
         if temperature > 0:
+            print("inside sampling next for gumbel generator.......")
             probs = torch.softmax(logits / temperature, dim=-1)
             probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
             probs_sum = torch.cumsum(probs_sort, dim=-1)

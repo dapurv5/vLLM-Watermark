@@ -1,6 +1,7 @@
 import os
 import sys
 
+# export VLLM_ENABLE_V1_MULTIPROCESSING=0
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from vllm import LLM, SamplingParams
