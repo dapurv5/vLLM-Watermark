@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import Union
 
 from loguru import logger
@@ -5,22 +6,9 @@ from vllm.entrypoints.llm import LLM
 from vllm.model_executor.layers.sampler import Sampler
 from vllm.v1.sample.sampler import Sampler as V1Sampler
 
-from vllm_watermark.watermark_generators.gumbel_generator import GumbelGenerator
 
-
-# Factory for creating watermarked LLMs
-class WatermarkedLLMs:
-    @staticmethod
-    def create(
-        model, algo: str = "gumbel", debug: bool = False, **kwargs
-    ) -> "WatermarkedLLM":
-        if algo == "gumbel":
-            from vllm_watermark.samplers.custom_sampler import CustomSampler
-
-            generator = GumbelGenerator(model, model.get_tokenizer(), **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)
-            return WatermarkedLLM(model, sampler, debug=debug)
-        raise ValueError(f"Unknown watermarking algorithm: {algo}")
+class WatermarkingAlgorithm(Enum):
+    GUMBEL = "gumbel"
 
 
 class WatermarkedLLM:
@@ -203,3 +191,24 @@ class WatermarkedLLM:
         if self.debug:
             logger.debug("WatermarkedLLM.generate called")
         return self.llm.generate(*args, **kwargs)
+
+
+# Factory for creating watermarked LLMs
+class WatermarkedLLMs:
+    @staticmethod
+    def create(
+        model,
+        algo: WatermarkingAlgorithm = WatermarkingAlgorithm.GUMBEL,
+        debug: bool = False,
+        **kwargs,
+    ) -> WatermarkedLLM:
+        if algo == WatermarkingAlgorithm.GUMBEL:
+            from vllm_watermark.samplers.custom_sampler import CustomSampler
+            from vllm_watermark.watermark_generators.gumbel_generator import (
+                GumbelGenerator,
+            )
+
+            generator = GumbelGenerator(model, model.get_tokenizer(), **kwargs)
+            sampler = CustomSampler(model, generator, debug=debug)
+            return WatermarkedLLM(model, sampler, debug=debug)
+        raise ValueError(f"Unknown watermarking algorithm: {algo}")
