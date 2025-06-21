@@ -4,10 +4,42 @@ import sys
 # export VLLM_ENABLE_V1_MULTIPROCESSING=0
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+from loguru import logger
 from vllm import LLM, SamplingParams
 
 from vllm_watermark.core import WatermarkedLLMs, WatermarkingAlgorithm
 from vllm_watermark.watermark_detectors import MarylandDetectorZ, OpenaiDetectorZ
+
+
+def infer_vocab_size(model, tokenizer):
+    """Infer vocab size from model to handle Llama tokenizer issues."""
+    # Try to get vocab size from model config
+    if hasattr(model.llm_engine, "model_executor"):
+        try:
+            if hasattr(model.llm_engine.model_executor, "driver_worker"):
+                worker = model.llm_engine.model_executor.driver_worker
+                if hasattr(worker, "model_runner") and hasattr(
+                    worker.model_runner, "model"
+                ):
+                    model_config = worker.model_runner.model.config
+                    if hasattr(model_config, "vocab_size"):
+                        logger.info(
+                            f"Found vocab size from model config: {model_config.vocab_size}"
+                        )
+                        return model_config.vocab_size
+        except Exception as e:
+            pass
+
+    # Fallback to tokenizer methods
+    try:
+        logger.info(f"Found vocab size from tokenizer: {len(tokenizer.get_vocab())}")
+        vocab_size = len(tokenizer.get_vocab())
+    except Exception as e:
+        logger.info(f"Found vocab size from tokenizer: {tokenizer.vocab_size}")
+        vocab_size = tokenizer.vocab_size
+
+    return vocab_size
+
 
 # Load the vLLM model
 llm = LLM(model="meta-llama/Llama-3.2-1B")
@@ -17,8 +49,12 @@ wm_llm = WatermarkedLLMs.create(
     llm, algo=WatermarkingAlgorithm.OPENAI, seed=42, ngram=2
 )
 
-# Create multiple detectors for comparison
+# Infer vocab size for Llama models
 tokenizer = llm.get_tokenizer()
+vocab_size = infer_vocab_size(llm, tokenizer)
+print(f"Inferred vocab size: {vocab_size}")
+
+# Create multiple detectors for comparison
 detectors = {
     "Maryland": MarylandDetectorZ(
         tokenizer=tokenizer,
@@ -28,6 +64,7 @@ detectors = {
         salt_key=35317,
         gamma=0.5,
         threshold=0.05,
+        vocab_size=vocab_size,
     ),
     "OpenAI": OpenaiDetectorZ(
         tokenizer=tokenizer,
@@ -35,7 +72,9 @@ detectors = {
         seed=42,
         seeding="hash",
         salt_key=35317,
+        payload=0,  # Match the generator's payload
         threshold=0.05,
+        vocab_size=vocab_size,
     ),
 }
 
@@ -80,9 +119,12 @@ for detector_name, detector in detectors.items():
 
 print("\n=== EXPLANATION ===")
 print(
-    "Different detectors may show varying effectiveness depending on the watermarking algorithm used."
+    "The OpenAI detector should be most effective for detecting OpenAI-watermarked text."
 )
 print(
     "Lower p-values (< threshold) indicate higher confidence that the text is watermarked."
 )
 print("The detectors use different statistical methods for p-value calculation.")
+print(
+    "Make sure the generator and detector use the same parameters (seed, ngram, payload, etc.)"
+)

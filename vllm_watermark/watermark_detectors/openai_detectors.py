@@ -17,9 +17,11 @@ class OpenaiDetector(WmDetector):
         seed: int = 0,
         seeding: str = "hash",
         salt_key: int = 35317,
+        payload: int = 0,
         **kwargs,
     ):
         super().__init__(tokenizer, ngram, seed, seeding, salt_key, **kwargs)
+        self.payload = payload
 
     def score_tok(self, ngram_tokens, token_id):
         """
@@ -33,6 +35,7 @@ class OpenaiDetector(WmDetector):
         seed = self.get_seed_rng(ngram_tokens)
         self.rng.manual_seed(seed)
         rs = torch.rand(self.vocab_size, generator=self.rng, device=self.device)  # n
+        rs = rs.roll(-self.payload)  # Apply payload shift like in generator
         scores = -(1 - rs).log().roll(-token_id)
         return scores.cpu()
 
@@ -52,15 +55,18 @@ class OpenaiDetectorZ(WmDetector):
         seed: int = 0,
         seeding: str = "hash",
         salt_key: int = 35317,
+        payload: int = 0,
         **kwargs,
     ):
         super().__init__(tokenizer, ngram, seed, seeding, salt_key, **kwargs)
+        self.payload = payload
 
     def score_tok(self, ngram_tokens, token_id):
         """same as OpenaiDetector but using zscore"""
         seed = self.get_seed_rng(ngram_tokens)
         self.rng.manual_seed(seed)
         rs = torch.rand(self.vocab_size, generator=self.rng, device=self.device)  # n
+        rs = rs.roll(-self.payload)  # Apply payload shift like in generator
         scores = -(1 - rs).log().roll(-token_id)
         return scores.cpu()
 

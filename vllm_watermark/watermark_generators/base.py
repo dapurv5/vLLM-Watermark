@@ -44,12 +44,13 @@ class WmGenerator(ABC):
         self.rng = torch.Generator()
         self.rng.manual_seed(self.seed)
         self.payload = payload
-        self.device = self.model.device if hasattr(self.model, "device") else "cpu"
 
-        # Move RNG to GPU if CUDA is available
+        # Use CUDA if available (same as detector)
         if torch.cuda.is_available():
+            self.device = torch.device("cuda")
             self.rng = torch.Generator(device=self.device)
         else:
+            self.device = torch.device("cpu")
             self.rng = torch.Generator()
         self.rng.manual_seed(self.seed)
 

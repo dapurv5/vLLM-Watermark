@@ -74,7 +74,7 @@ class CustomSampler(base_sampler_class):
         if should_watermark:
             if debug:
                 logger.debug(
-                    f"Applying Gumbel watermarking with temp={temperature}, top_p={top_p}"
+                    f"Applying watermarking with temp={temperature}, top_p={top_p}"
                 )
 
             # Build n-gram contexts

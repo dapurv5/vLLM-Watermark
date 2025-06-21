@@ -21,9 +21,10 @@ class WmDetector:
     ):
         # model config
         self.tokenizer = tokenizer
-        self.vocab_size = (
-            vocab_size if vocab_size is not None else self.tokenizer.vocab_size
-        )
+
+        # Set vocab size
+        self.vocab_size = vocab_size
+
         # watermark config
         self.ngram = ngram
         self.salt_key = salt_key
@@ -57,14 +58,16 @@ class WmDetector:
             for i in input_ids:
                 seed = (seed * self.salt_key + i) % (2**64 - 1)
         elif self.seeding == "additive":
-            seed = self.salt_key * torch.sum(input_ids)
+            seed = self.salt_key * torch.sum(torch.tensor(input_ids))
             seed = self.hashint(seed)
+            seed = seed.item()  # Convert tensor to int
         elif self.seeding == "skip":
             seed = self.salt_key * input_ids[0]
-            seed = self.hashint(seed)
+            seed = self.hashint(torch.tensor(seed))
+            seed = seed.item()  # Convert tensor to int
         elif self.seeding == "min":
-            seed = self.hashint(self.salt_key * input_ids)
-            seed = torch.min(seed)
+            seed = self.hashint(self.salt_key * torch.tensor(input_ids))
+            seed = torch.min(seed).item()  # Convert tensor to int
         return seed
 
     def aggregate_scores(
