@@ -11,7 +11,9 @@ from vllm_watermark.watermark_generators.gumbel_generator import GumbelGenerator
 # Factory for creating watermarked LLMs
 class WatermarkedLLMs:
     @staticmethod
-    def create(model, algo: str = "gumbel", debug: bool = False, **kwargs) -> LLM:
+    def create(
+        model, algo: str = "gumbel", debug: bool = False, **kwargs
+    ) -> "WatermarkedLLM":
         if algo == "gumbel":
             from vllm_watermark.samplers.custom_sampler import CustomSampler
 
