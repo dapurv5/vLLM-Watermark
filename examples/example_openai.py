@@ -12,9 +12,9 @@ from vllm_watermark.watermark_detectors import MarylandDetectorZ, OpenaiDetector
 # Load the vLLM model
 llm = LLM(model="meta-llama/Llama-3.2-1B")
 
-# Create a Gumbel watermarked LLM (this wraps and patches the LLM)
+# Create a OpenAI watermarked LLM (this wraps and patches the LLM)
 wm_llm = WatermarkedLLMs.create(
-    llm, algo=WatermarkingAlgorithm.GUMBEL, seed=42, ngram=2
+    llm, algo=WatermarkingAlgorithm.OPENAI, seed=42, ngram=2
 )
 
 # Create multiple detectors for comparison

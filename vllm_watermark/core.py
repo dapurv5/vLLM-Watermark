@@ -8,7 +8,9 @@ from vllm.v1.sample.sampler import Sampler as V1Sampler
 
 
 class WatermarkingAlgorithm(Enum):
-    GUMBEL = "gumbel"
+    OPENAI = "openai"
+    PF = "pf"
+    MARYLAND = "maryland"
 
 
 class WatermarkedLLM:
@@ -198,17 +200,26 @@ class WatermarkedLLMs:
     @staticmethod
     def create(
         model,
-        algo: WatermarkingAlgorithm = WatermarkingAlgorithm.GUMBEL,
+        algo: WatermarkingAlgorithm = WatermarkingAlgorithm.OPENAI,
         debug: bool = False,
         **kwargs,
     ) -> WatermarkedLLM:
-        if algo == WatermarkingAlgorithm.GUMBEL:
+        if algo == WatermarkingAlgorithm.OPENAI:
             from vllm_watermark.samplers.custom_sampler import CustomSampler
-            from vllm_watermark.watermark_generators.gumbel_generator import (
-                GumbelGenerator,
+            from vllm_watermark.watermark_generators.openai_generator import (
+                OpenaiGenerator,
             )
 
-            generator = GumbelGenerator(model, model.get_tokenizer(), **kwargs)
+            generator = OpenaiGenerator(model, model.get_tokenizer(), **kwargs)
+            sampler = CustomSampler(model, generator, debug=debug)
+            return WatermarkedLLM(model, sampler, debug=debug)
+        elif algo == WatermarkingAlgorithm.MARYLAND:
+            from vllm_watermark.samplers.custom_sampler import CustomSampler
+            from vllm_watermark.watermark_generators.maryland_generator import (
+                MarylandGenerator,
+            )
+
+            generator = MarylandGenerator(model, model.get_tokenizer(), **kwargs)
             sampler = CustomSampler(model, generator, debug=debug)
             return WatermarkedLLM(model, sampler, debug=debug)
         raise ValueError(f"Unknown watermarking algorithm: {algo}")
