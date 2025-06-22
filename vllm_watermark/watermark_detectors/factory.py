@@ -27,8 +27,7 @@ class WatermarkDetectors:
         gamma: float = 0.5,  # For Maryland
         **kwargs,
     ):
-        """
-        Create a watermark detector with automatic configuration.
+        """Create a watermark detector with automatic configuration.
 
         Args:
             algo: Detection algorithm to use

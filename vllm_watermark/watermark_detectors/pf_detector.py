@@ -21,8 +21,8 @@ class PFDetector(WmDetector):
         super().__init__(tokenizer, ngram, seed, seeding, salt_key, **kwargs)
 
     def score_tok(self, ngram_tokens, token_id):
-        """
-        score_t = -log(1 - rt[token_id]])
+        """score_t = -log(1 - rt[token_id]]).
+
         The last line shifts the scores by token_id.
         ex: scores[0] = r_t[token_id]
             scores[1] = (r_t shifted of 1)[token_id]

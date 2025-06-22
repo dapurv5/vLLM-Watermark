@@ -49,8 +49,8 @@ class WmDetector:
         return self.hashtable[integer_tensor.cpu() % len(self.hashtable)]
 
     def get_seed_rng(self, input_ids: List[int]) -> int:
-        """
-        Seed RNG with hash of input_ids.
+        """Seed RNG with hash of input_ids.
+
         Adapted from https://github.com/jwkirchenbauer/lm-watermarking
         """
         if self.seeding == "hash":
@@ -98,8 +98,8 @@ class WmDetector:
         ntoks_max: int = None,
         payload_max: int = 0,
     ) -> List[np.array]:
-        """
-        Get score increment for each token in list of texts.
+        """Get score increment for each token in list of texts.
+
         Args:
             texts: list of texts
             scoring_method:
@@ -108,7 +108,9 @@ class WmDetector:
                 'v2': only score unique {wm window+tok} is unique
             ntoks_max: maximum number of tokens
             payload_max: maximum number of messages
+
         Note that this won't return a list of empty np.array if len(tokens_id[ii]) > self.ngram + 1
+
         Output:
             score_lists: list of [np array of score increments for every token and payload] for each text
         """
@@ -143,10 +145,11 @@ class WmDetector:
         return score_lists
 
     def get_pvalues(self, scores: List[np.array], eps: float = 1e-200) -> np.array:
-        """
-        Get p-value for each text.
+        """Get p-value for each text.
+
         Args:
             score_lists: list of [list of score increments for each token] for each text
+
         Output:
             pvalues: np array of p-values for each text and payload
         """

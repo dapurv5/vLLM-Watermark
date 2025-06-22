@@ -26,8 +26,8 @@ class MarylandDetector(WmDetector):
         self.delta = delta
 
     def score_tok(self, ngram_tokens, token_id):
-        """
-        score_t = 1 if token_id in greenlist else 0
+        """score_t = 1 if token_id in greenlist else 0.
+
         The last line shifts the scores by token_id.
         ex: scores[0] = 1 if token_id in greenlist else 0
             scores[1] = 1 if token_id in (greenlist shifted of 1) else 0

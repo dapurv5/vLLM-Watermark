@@ -26,8 +26,7 @@ class WatermarkGenerators:
         gamma: float = 0.5,  # For Maryland
         **kwargs,
     ):
-        """
-        Create a watermark generator with automatic configuration.
+        """Create a watermark generator with automatic configuration.
 
         Args:
             algo: Watermarking algorithm to use

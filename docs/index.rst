@@ -1,5 +1,9 @@
+.. image:: ../resources/vLLM-WM-Logo.png
+   :width: 120px
+   :align: center
+
 Welcome to vLLM-Watermark's documentation!
-=====================================
+==========================================
 
 vLLM-Watermark is a Python package for implementing various watermarking algorithms for LLM outputs, with support for different backends including vLLM and SGLang.
 
@@ -10,10 +14,12 @@ vLLM-Watermark is a Python package for implementing various watermarking algorit
    installation
    usage
    api
+   examples
+   mathematical_foundations
    contributing
 
 Installation
------------
+------------
 
 You can install vLLM-Watermark using pip:
 
@@ -30,7 +36,7 @@ For development installation:
    pip install -e ".[dev]"
 
 Quick Start
-----------
+-----------
 
 Here's a quick example of how to use vLLM-Watermark:
 

@@ -1,0 +1,738 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mathematical Foundations &mdash; vLLM-Watermark 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=cdffa3c5" />
+
+  
+    <link rel="shortcut icon" href="_static/vLLM-WM-Logo.png"/>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script>window.MathJax = {"tex": {"equationNumbers": {"autoNumber": "AMS"}, "extensions": ["AMSmath.js", "AMSsymbols.js"]}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contributing to vLLM-Watermark" href="contributing.html" />
+    <link rel="prev" title="Examples" href="examples.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            vLLM-Watermark
+              <img src="_static/vLLM-WM-Logo.png" class="logo" alt="Logo"/>
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#system-requirements">System Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-methods">Installation Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#from-pypi-recommended">From PyPI (Recommended)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#from-source">From Source</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#using-conda">Using Conda</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#docker-installation">Docker Installation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#verification">Verification</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#troubleshooting">Troubleshooting</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#common-issues">Common Issues</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#performance-optimization">Performance Optimization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#gpu-memory-management">GPU Memory Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="installation.html#multi-gpu-setup">Multi-GPU Setup</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#development-setup">Development Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#quick-start">Quick Start</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#basic-example">Basic Example</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#watermarking-algorithms">Watermarking Algorithms</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#openai-watermarking">OpenAI Watermarking</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#maryland-watermarking">Maryland Watermarking</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#pf-watermarking">PF Watermarking</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#detection-methods">Detection Methods</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#openai-detection">OpenAI Detection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#maryland-detection">Maryland Detection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#pf-detection">PF Detection</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#advanced-usage">Advanced Usage</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#custom-sampling-parameters">Custom Sampling Parameters</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#batch-processing">Batch Processing</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#parameter-tuning">Parameter Tuning</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#error-handling">Error Handling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#performance-optimization">Performance Optimization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#gpu-memory-management">GPU Memory Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="usage.html#caching-and-reuse">Caching and Reuse</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#best-practices">Best Practices</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#next-steps">Next Steps</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="api.html">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-vllm_watermark.core">Core Module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkingAlgorithm"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkingAlgorithm.OPENAI"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.OPENAI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkingAlgorithm.MARYLAND"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.MARYLAND</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkingAlgorithm.PF"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.PF</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.core.DetectionAlgorithm"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.DetectionAlgorithm.OPENAI"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.OPENAI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.DetectionAlgorithm.OPENAI_Z"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.OPENAI_Z</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.DetectionAlgorithm.MARYLAND"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.MARYLAND</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.DetectionAlgorithm.MARYLAND_Z"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.MARYLAND_Z</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.DetectionAlgorithm.PF"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.PF</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkUtils"><code class="docutils literal notranslate"><span class="pre">WatermarkUtils</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkUtils.infer_vocab_size"><code class="docutils literal notranslate"><span class="pre">WatermarkUtils.infer_vocab_size()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkUtils.get_tokenizer"><code class="docutils literal notranslate"><span class="pre">WatermarkUtils.get_tokenizer()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkedLLM"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkedLLM.__init__"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkedLLM._find_and_patch_samplers"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM._find_and_patch_samplers()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkedLLM._patch_vllm_sampling"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM._patch_vllm_sampling()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkedLLM.generate"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM.generate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkedLLMs"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLMs</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.core.WatermarkedLLMs.create"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLMs.create()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-vllm_watermark.watermark_generators">Watermark Generators</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WmGenerator"><code class="docutils literal notranslate"><span class="pre">WmGenerator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WmGenerator.__init__"><code class="docutils literal notranslate"><span class="pre">WmGenerator.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WmGenerator.generate"><code class="docutils literal notranslate"><span class="pre">WmGenerator.generate()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WmGenerator.get_seed_rng"><code class="docutils literal notranslate"><span class="pre">WmGenerator.get_seed_rng()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WmGenerator.hashint"><code class="docutils literal notranslate"><span class="pre">WmGenerator.hashint()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WmGenerator.sample_next"><code class="docutils literal notranslate"><span class="pre">WmGenerator.sample_next()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.MarylandGenerator"><code class="docutils literal notranslate"><span class="pre">MarylandGenerator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.MarylandGenerator.__init__"><code class="docutils literal notranslate"><span class="pre">MarylandGenerator.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.MarylandGenerator.logits_processor"><code class="docutils literal notranslate"><span class="pre">MarylandGenerator.logits_processor()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.MarylandGenerator.sample_next"><code class="docutils literal notranslate"><span class="pre">MarylandGenerator.sample_next()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.OpenaiGenerator"><code class="docutils literal notranslate"><span class="pre">OpenaiGenerator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.OpenaiGenerator.__init__"><code class="docutils literal notranslate"><span class="pre">OpenaiGenerator.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.OpenaiGenerator.sample_next"><code class="docutils literal notranslate"><span class="pre">OpenaiGenerator.sample_next()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.PFGenerator"><code class="docutils literal notranslate"><span class="pre">PFGenerator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.PFGenerator.__init__"><code class="docutils literal notranslate"><span class="pre">PFGenerator.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.PFGenerator.sample_next"><code class="docutils literal notranslate"><span class="pre">PFGenerator.sample_next()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WatermarkGenerators"><code class="docutils literal notranslate"><span class="pre">WatermarkGenerators</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.WatermarkGenerators.create"><code class="docutils literal notranslate"><span class="pre">WatermarkGenerators.create()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-vllm_watermark.watermark_detectors">Watermark Detectors</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector"><code class="docutils literal notranslate"><span class="pre">WmDetector</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.__init__"><code class="docutils literal notranslate"><span class="pre">WmDetector.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.aggregate_scores"><code class="docutils literal notranslate"><span class="pre">WmDetector.aggregate_scores()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.detect"><code class="docutils literal notranslate"><span class="pre">WmDetector.detect()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.get_pvalue"><code class="docutils literal notranslate"><span class="pre">WmDetector.get_pvalue()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.get_pvalues"><code class="docutils literal notranslate"><span class="pre">WmDetector.get_pvalues()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.get_pvalues_by_t"><code class="docutils literal notranslate"><span class="pre">WmDetector.get_pvalues_by_t()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.get_scores_by_t"><code class="docutils literal notranslate"><span class="pre">WmDetector.get_scores_by_t()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.get_seed_rng"><code class="docutils literal notranslate"><span class="pre">WmDetector.get_seed_rng()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.hashint"><code class="docutils literal notranslate"><span class="pre">WmDetector.hashint()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WmDetector.score_tok"><code class="docutils literal notranslate"><span class="pre">WmDetector.score_tok()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetector"><code class="docutils literal notranslate"><span class="pre">MarylandDetector</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetector.__init__"><code class="docutils literal notranslate"><span class="pre">MarylandDetector.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetector.get_pvalue"><code class="docutils literal notranslate"><span class="pre">MarylandDetector.get_pvalue()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetector.score_tok"><code class="docutils literal notranslate"><span class="pre">MarylandDetector.score_tok()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetectorZ"><code class="docutils literal notranslate"><span class="pre">MarylandDetectorZ</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetectorZ.__init__"><code class="docutils literal notranslate"><span class="pre">MarylandDetectorZ.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetectorZ.get_pvalue"><code class="docutils literal notranslate"><span class="pre">MarylandDetectorZ.get_pvalue()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.MarylandDetectorZ.score_tok"><code class="docutils literal notranslate"><span class="pre">MarylandDetectorZ.score_tok()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetector"><code class="docutils literal notranslate"><span class="pre">OpenaiDetector</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetector.__init__"><code class="docutils literal notranslate"><span class="pre">OpenaiDetector.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetector.get_pvalue"><code class="docutils literal notranslate"><span class="pre">OpenaiDetector.get_pvalue()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetector.score_tok"><code class="docutils literal notranslate"><span class="pre">OpenaiDetector.score_tok()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetectorZ"><code class="docutils literal notranslate"><span class="pre">OpenaiDetectorZ</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetectorZ.__init__"><code class="docutils literal notranslate"><span class="pre">OpenaiDetectorZ.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetectorZ.get_pvalue"><code class="docutils literal notranslate"><span class="pre">OpenaiDetectorZ.get_pvalue()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.OpenaiDetectorZ.score_tok"><code class="docutils literal notranslate"><span class="pre">OpenaiDetectorZ.score_tok()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.PFDetector"><code class="docutils literal notranslate"><span class="pre">PFDetector</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.PFDetector.__init__"><code class="docutils literal notranslate"><span class="pre">PFDetector.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.PFDetector.get_pvalue"><code class="docutils literal notranslate"><span class="pre">PFDetector.get_pvalue()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.PFDetector.score_tok"><code class="docutils literal notranslate"><span class="pre">PFDetector.score_tok()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WatermarkDetectors"><code class="docutils literal notranslate"><span class="pre">WatermarkDetectors</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.WatermarkDetectors.create"><code class="docutils literal notranslate"><span class="pre">WatermarkDetectors.create()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-vllm_watermark.samplers">Samplers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-vllm_watermark.logit_processors">Logit Processors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#factory-classes">Factory Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#module-vllm_watermark.watermark_generators.factory">Watermark Generator Factory</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.factory.WatermarkGenerators"><code class="docutils literal notranslate"><span class="pre">WatermarkGenerators</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#module-vllm_watermark.watermark_detectors.factory">Watermark Detector Factory</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.factory.WatermarkDetectors"><code class="docutils literal notranslate"><span class="pre">WatermarkDetectors</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#base-classes">Base Classes</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#module-vllm_watermark.watermark_generators.base">Base Watermark Generator</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_generators.base.WmGenerator"><code class="docutils literal notranslate"><span class="pre">WmGenerator</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#module-vllm_watermark.watermark_detectors.base">Base Watermark Detector</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#vllm_watermark.watermark_detectors.base.WmDetector"><code class="docutils literal notranslate"><span class="pre">WmDetector</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#module-0">Enumerations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#id0"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id1"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.OPENAI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id2"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.MARYLAND</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id3"><code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.PF</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#id4"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id5"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.OPENAI</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id6"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.OPENAI_Z</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id7"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.MARYLAND</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id8"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.MARYLAND_Z</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id9"><code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.PF</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#id10"><code class="docutils literal notranslate"><span class="pre">WatermarkUtils</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id11"><code class="docutils literal notranslate"><span class="pre">WatermarkUtils.infer_vocab_size()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id12"><code class="docutils literal notranslate"><span class="pre">WatermarkUtils.get_tokenizer()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#id13"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id14"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id15"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM._find_and_patch_samplers()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id16"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM._patch_vllm_sampling()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id17"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLM.generate()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#id18"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLMs</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="api.html#id19"><code class="docutils literal notranslate"><span class="pre">WatermarkedLLMs.create()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#data-structures">Data Structures</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#detection-results">Detection Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#generation-results">Generation Results</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#error-handling">Error Handling</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#common-exceptions">Common Exceptions</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#usage-examples">Usage Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#basic-watermarking">Basic Watermarking</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#advanced-detection">Advanced Detection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#batch-processing">Batch Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#performance-optimization">Performance Optimization</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#memory-management">Memory Management</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#caching">Caching</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#configuration">Configuration</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="api.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l3"><a class="reference internal" href="api.html#logging">Logging</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="api.html#best-practices">Best Practices</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#basic-examples">Basic Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#openai-watermarking">OpenAI Watermarking</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#maryland-watermarking">Maryland Watermarking</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#advanced-examples">Advanced Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#multi-algorithm-comparison">Multi-Algorithm Comparison</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#parameter-optimization">Parameter Optimization</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#batch-processing">Batch Processing</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#production-use-cases">Production Use Cases</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#api-server">API Server</a></li>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#content-moderation">Content Moderation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#research-applications">Research Applications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#a-b-testing-framework">A/B Testing Framework</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#error-handling-examples">Error Handling Examples</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="examples.html#robust-error-handling">Robust Error Handling</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Mathematical Foundations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#mathematical-notation">Mathematical Notation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#openai-watermarking-algorithm">OpenAI Watermarking Algorithm</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#mathematical-formulation">Mathematical Formulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detection-algorithm">Detection Algorithm</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#z-score-approximation">Z-Score Approximation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#maryland-watermarking-algorithm">Maryland Watermarking Algorithm</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Mathematical Formulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id2">Detection Algorithm</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#pf-watermarking-algorithm">PF Watermarking Algorithm</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id3">Mathematical Formulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#id4">Detection Algorithm</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#statistical-properties">Statistical Properties</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#false-positive-rate">False Positive Rate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#false-negative-rate">False Negative Rate</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detection-power">Detection Power</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#parameter-selection">Parameter Selection</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#watermark-strength-gamma">Watermark Strength <span class="math notranslate nohighlight">\(\gamma\)</span></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#optimal-selection">Optimal Selection</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detection-threshold-delta">Detection Threshold <span class="math notranslate nohighlight">\(\delta\)</span></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#n-gram-size-n">N-gram Size <span class="math notranslate nohighlight">\(n\)</span></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#computational-complexity">Computational Complexity</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#time-complexity">Time Complexity</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#space-complexity">Space Complexity</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#security-considerations">Security Considerations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#adversarial-attacks">Adversarial Attacks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#robustness-measures">Robustness Measures</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#theoretical-bounds">Theoretical Bounds</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#information-theoretic-limits">Information-Theoretic Limits</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detection-bounds">Detection Bounds</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#references">References</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contributing to vLLM-Watermark</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#development-setup">Development Setup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#code-style">Code Style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#testing">Testing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#documentation">Documentation</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#building-documentation">Building Documentation</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#pull-request-process">Pull Request Process</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="contributing.html#pull-request-guidelines">Pull Request Guidelines</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#issue-reporting">Issue Reporting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#feature-requests">Feature Requests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#code-of-conduct">Code of Conduct</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#contact">Contact</a></li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">vLLM-Watermark</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Mathematical Foundations</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/mathematical_foundations.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="mathematical-foundations">
+<h1>Mathematical Foundations<a class="headerlink" href="#mathematical-foundations" title="Link to this heading"></a></h1>
+<p>This document provides the mathematical foundations and theoretical background for the watermarking algorithms implemented in vLLM-Watermark.</p>
+<section id="overview">
+<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading"></a></h2>
+<p>Watermarking algorithms for language models work by subtly modifying the token selection process during text generation. The goal is to embed a detectable signal (watermark) while maintaining the quality and coherence of the generated text.</p>
+</section>
+<section id="mathematical-notation">
+<h2>Mathematical Notation<a class="headerlink" href="#mathematical-notation" title="Link to this heading"></a></h2>
+<p>Throughout this document, we use the following notation:</p>
+<ul class="simple">
+<li><p><span class="math notranslate nohighlight">\(P(t)\)</span> - Original probability of token <span class="math notranslate nohighlight">\(t\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(P_w(t)\)</span> - Watermarked probability of token <span class="math notranslate nohighlight">\(t\)</span></p></li>
+<li><p><span class="math notranslate nohighlight">\(\gamma\)</span> - Watermark strength parameter</p></li>
+<li><p><span class="math notranslate nohighlight">\(\delta\)</span> - Detection threshold parameter</p></li>
+<li><p><span class="math notranslate nohighlight">\(H(\cdot)\)</span> - Hash function</p></li>
+<li><p><span class="math notranslate nohighlight">\(\text{seed}\)</span> - Random seed for reproducibility</p></li>
+<li><p><span class="math notranslate nohighlight">\(n\)</span> - N-gram size for context hashing</p></li>
+</ul>
+</section>
+<section id="openai-watermarking-algorithm">
+<h2>OpenAI Watermarking Algorithm<a class="headerlink" href="#openai-watermarking-algorithm" title="Link to this heading"></a></h2>
+<p>The OpenAI watermarking algorithm, introduced in “A Watermark for Large Language Models” (Kirchenbauer et al., 2023), uses a power-law transformation of token probabilities.</p>
+<section id="mathematical-formulation">
+<h3>Mathematical Formulation<a class="headerlink" href="#mathematical-formulation" title="Link to this heading"></a></h3>
+<p>The algorithm works as follows:</p>
+<ol class="arabic">
+<li><p><strong>Context Hashing</strong>: For each token position, compute a hash of the previous <span class="math notranslate nohighlight">\(n\)</span> tokens:</p>
+<div class="math notranslate nohighlight">
+\[h_i = H(\text{seed}, t_{i-n+1}, t_{i-n+2}, \ldots, t_i)\]</div>
+</li>
+<li><p><strong>Green List Selection</strong>: Use the hash to determine a “green list” of tokens:</p>
+<div class="math notranslate nohighlight">
+\[\text{green}_i = \{t : h_i \bmod 2 = 0\}\]</div>
+</li>
+<li><p><strong>Probability Transformation</strong>: Apply a power-law transformation to green list tokens:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P_w(t) = \begin{cases}
+   \frac{P(t)^\gamma}{\sum_{t' \in \text{green}_i} P(t')^\gamma} &amp; \text{if } t \in \text{green}_i \\
+   \frac{P(t)^\gamma}{\sum_{t' \notin \text{green}_i} P(t')^\gamma} &amp; \text{if } t \notin \text{green}_i
+\end{cases}\end{split}\]</div>
+</li>
+<li><p><strong>Normalization</strong>: Ensure probabilities sum to 1:</p>
+<div class="math notranslate nohighlight">
+\[P_w(t) = \frac{P_w(t)}{\sum_{t'} P_w(t')}\]</div>
+</li>
+</ol>
+</section>
+<section id="detection-algorithm">
+<h3>Detection Algorithm<a class="headerlink" href="#detection-algorithm" title="Link to this heading"></a></h3>
+<p>The detection algorithm computes a test statistic based on the proportion of green list tokens:</p>
+<div class="math notranslate nohighlight">
+\[S = \frac{1}{L} \sum_{i=1}^{L} \mathbb{I}[t_i \in \text{green}_i]\]</div>
+<p>where <span class="math notranslate nohighlight">\(L\)</span> is the text length and <span class="math notranslate nohighlight">\(\mathbb{I}[\cdot]\)</span> is the indicator function.</p>
+<p>Under the null hypothesis (no watermark), <span class="math notranslate nohighlight">\(S\)</span> follows a binomial distribution:</p>
+<div class="math notranslate nohighlight">
+\[S \sim \text{Binomial}(L, 0.5)\]</div>
+<p>The p-value is computed as:</p>
+<div class="math notranslate nohighlight">
+\[p\text{-value} = P(S \geq s_{\text{obs}} | H_0)\]</div>
+<p>where <span class="math notranslate nohighlight">\(s_{\text{obs}}\)</span> is the observed test statistic.</p>
+</section>
+<section id="z-score-approximation">
+<h3>Z-Score Approximation<a class="headerlink" href="#z-score-approximation" title="Link to this heading"></a></h3>
+<p>For computational efficiency, we use a z-score approximation:</p>
+<div class="math notranslate nohighlight">
+\[Z = \frac{S - 0.5}{\sqrt{0.25/L}}\]</div>
+<p>Under <span class="math notranslate nohighlight">\(H_0\)</span>, <span class="math notranslate nohighlight">\(Z \sim \mathcal{N}(0, 1)\)</span>, and the p-value is:</p>
+<div class="math notranslate nohighlight">
+\[p\text{-value} = 1 - \Phi(Z)\]</div>
+<p>where <span class="math notranslate nohighlight">\(\Phi\)</span> is the standard normal cumulative distribution function.</p>
+</section>
+</section>
+<section id="maryland-watermarking-algorithm">
+<h2>Maryland Watermarking Algorithm<a class="headerlink" href="#maryland-watermarking-algorithm" title="Link to this heading"></a></h2>
+<p>The Maryland algorithm, based on “A Statistical Approach to Neural Text Generation” (Aaronson &amp; Kirchner, 2023), uses statistical hypothesis testing for watermarking.</p>
+<section id="id1">
+<h3>Mathematical Formulation<a class="headerlink" href="#id1" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>Token Scoring</strong>: For each token, compute a score based on the model’s logits:</p>
+<div class="math notranslate nohighlight">
+\[s_i = \log P(t_i) - \log P_{\text{uniform}}(t_i)\]</div>
+</li>
+<li><p><strong>Cumulative Score</strong>: Compute the cumulative score:</p>
+<div class="math notranslate nohighlight">
+\[C_i = \sum_{j=1}^{i} s_j\]</div>
+</li>
+<li><p><strong>Watermarking Decision</strong>: Apply watermarking based on a threshold:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P_w(t) = \begin{cases}
+   P(t) \cdot \exp(\gamma) &amp; \text{if } C_{i-1} &lt; \delta \\
+   P(t) &amp; \text{otherwise}
+\end{cases}\end{split}\]</div>
+</li>
+</ol>
+</section>
+<section id="id2">
+<h3>Detection Algorithm<a class="headerlink" href="#id2" title="Link to this heading"></a></h3>
+<p>The detection algorithm computes a test statistic:</p>
+<div class="math notranslate nohighlight">
+\[T = \frac{C_L}{\sqrt{L \cdot \text{Var}(s)}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(\text{Var}(s)\)</span> is the variance of token scores.</p>
+<p>Under <span class="math notranslate nohighlight">\(H_0\)</span>, <span class="math notranslate nohighlight">\(T \sim \mathcal{N}(0, 1)\)</span>, and the p-value is:</p>
+<div class="math notranslate nohighlight">
+\[p\text{-value} = 2 \cdot (1 - \Phi(|T|))\]</div>
+</section>
+</section>
+<section id="pf-watermarking-algorithm">
+<h2>PF Watermarking Algorithm<a class="headerlink" href="#pf-watermarking-algorithm" title="Link to this heading"></a></h2>
+<p>The Prefix-Free (PF) watermarking algorithm uses prefix-free coding to embed payloads in generated text.</p>
+<section id="id3">
+<h3>Mathematical Formulation<a class="headerlink" href="#id3" title="Link to this heading"></a></h3>
+<ol class="arabic">
+<li><p><strong>Payload Encoding</strong>: Encode the payload <span class="math notranslate nohighlight">\(m\)</span> as a binary string:</p>
+<div class="math notranslate nohighlight">
+\[b = \text{encode}(m)\]</div>
+</li>
+<li><p><strong>Prefix-Free Construction</strong>: Construct a prefix-free code <span class="math notranslate nohighlight">\(C\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[C = \{c_1, c_2, \ldots, c_k\}\]</div>
+<p>where no code word is a prefix of another.</p>
+</li>
+<li><p><strong>Token Selection</strong>: For each position, select tokens based on the code:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}P_w(t) = \begin{cases}
+   P(t) \cdot \exp(\gamma) &amp; \text{if } t \in C_i \\
+   P(t) &amp; \text{otherwise}
+\end{cases}\end{split}\]</div>
+</li>
+</ol>
+</section>
+<section id="id4">
+<h3>Detection Algorithm<a class="headerlink" href="#id4" title="Link to this heading"></a></h3>
+<p>The detection algorithm extracts the embedded payload:</p>
+<div class="math notranslate nohighlight">
+\[\hat{m} = \text{decode}(\hat{b})\]</div>
+<p>where <span class="math notranslate nohighlight">\(\hat{b}\)</span> is the extracted binary string.</p>
+<p>The detection confidence is based on the Hamming distance:</p>
+<div class="math notranslate nohighlight">
+\[\text{confidence} = 1 - \frac{d_H(b, \hat{b})}{|b|}\]</div>
+<p>where <span class="math notranslate nohighlight">\(d_H\)</span> is the Hamming distance.</p>
+</section>
+</section>
+<section id="statistical-properties">
+<h2>Statistical Properties<a class="headerlink" href="#statistical-properties" title="Link to this heading"></a></h2>
+<section id="false-positive-rate">
+<h3>False Positive Rate<a class="headerlink" href="#false-positive-rate" title="Link to this heading"></a></h3>
+<p>The false positive rate (FPR) is the probability of incorrectly detecting a watermark in non-watermarked text:</p>
+<div class="math notranslate nohighlight">
+\[\text{FPR} = P(\text{detect} | H_0) = \alpha\]</div>
+<p>where <span class="math notranslate nohighlight">\(\alpha\)</span> is the significance level (typically 0.05).</p>
+</section>
+<section id="false-negative-rate">
+<h3>False Negative Rate<a class="headerlink" href="#false-negative-rate" title="Link to this heading"></a></h3>
+<p>The false negative rate (FNR) is the probability of failing to detect a watermark in watermarked text:</p>
+<div class="math notranslate nohighlight">
+\[\text{FNR} = P(\text{not detect} | H_1) = \beta\]</div>
+<p>The power of the test is <span class="math notranslate nohighlight">\(1 - \beta\)</span>.</p>
+</section>
+<section id="detection-power">
+<h3>Detection Power<a class="headerlink" href="#detection-power" title="Link to this heading"></a></h3>
+<p>The detection power depends on the watermark strength <span class="math notranslate nohighlight">\(\gamma\)</span> and text length <span class="math notranslate nohighlight">\(L\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[\text{Power} = P(\text{detect} | H_1) = 1 - \beta\]</div>
+<p>For the OpenAI algorithm, the power increases with <span class="math notranslate nohighlight">\(\gamma\)</span> and <span class="math notranslate nohighlight">\(L\)</span>.</p>
+</section>
+</section>
+<section id="parameter-selection">
+<h2>Parameter Selection<a class="headerlink" href="#parameter-selection" title="Link to this heading"></a></h2>
+<section id="watermark-strength-gamma">
+<h3>Watermark Strength <span class="math notranslate nohighlight">\(\gamma\)</span><a class="headerlink" href="#watermark-strength-gamma" title="Link to this heading"></a></h3>
+<p>The watermark strength <span class="math notranslate nohighlight">\(\gamma\)</span> controls the trade-off between detectability and text quality:</p>
+<ul class="simple">
+<li><p><strong>Small :math:`gamma`</strong> (0.1-0.3): Subtle watermarking, high text quality, lower detection power</p></li>
+<li><p><strong>Medium :math:`gamma`</strong> (0.3-0.7): Balanced approach, good detection power</p></li>
+<li><p><strong>Large :math:`gamma`</strong> (0.7-1.0): Strong watermarking, potentially lower text quality, high detection power</p></li>
+</ul>
+</section>
+<section id="optimal-selection">
+<h3>Optimal Selection<a class="headerlink" href="#optimal-selection" title="Link to this heading"></a></h3>
+<p>The optimal <span class="math notranslate nohighlight">\(\gamma\)</span> depends on your specific use case:</p>
+<div class="math notranslate nohighlight">
+\[\gamma^* = \arg\max_{\gamma} \text{Power}(\gamma) \text{ s.t. } \text{Quality}(\gamma) \geq \text{threshold}\]</div>
+</section>
+<section id="detection-threshold-delta">
+<h3>Detection Threshold <span class="math notranslate nohighlight">\(\delta\)</span><a class="headerlink" href="#detection-threshold-delta" title="Link to this heading"></a></h3>
+<p>The detection threshold controls the false positive rate:</p>
+<div class="math notranslate nohighlight">
+\[\alpha = P(S \geq \delta | H_0)\]</div>
+<p>Typical values:
+- <strong>Conservative</strong>: <span class="math notranslate nohighlight">\(\alpha = 0.01\)</span> (1% FPR)
+- <strong>Standard</strong>: <span class="math notranslate nohighlight">\(\alpha = 0.05\)</span> (5% FPR)
+- <strong>Liberal</strong>: <span class="math notranslate nohighlight">\(\alpha = 0.10\)</span> (10% FPR)</p>
+</section>
+<section id="n-gram-size-n">
+<h3>N-gram Size <span class="math notranslate nohighlight">\(n\)</span><a class="headerlink" href="#n-gram-size-n" title="Link to this heading"></a></h3>
+<p>The n-gram size affects the context used for watermarking:</p>
+<ul class="simple">
+<li><p><strong>Small :math:`n`</strong> (1-2): Local context, faster computation</p></li>
+<li><p><strong>Large :math:`n`</strong> (3-5): More context, potentially better detection</p></li>
+</ul>
+</section>
+</section>
+<section id="computational-complexity">
+<h2>Computational Complexity<a class="headerlink" href="#computational-complexity" title="Link to this heading"></a></h2>
+<section id="time-complexity">
+<h3>Time Complexity<a class="headerlink" href="#time-complexity" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Generation</strong>: <span class="math notranslate nohighlight">\(O(L \cdot V)\)</span> where <span class="math notranslate nohighlight">\(L\)</span> is text length and <span class="math notranslate nohighlight">\(V\)</span> is vocabulary size</p></li>
+<li><p><strong>Detection</strong>: <span class="math notranslate nohighlight">\(O(L)\)</span> for most algorithms</p></li>
+<li><p><strong>Hash computation</strong>: <span class="math notranslate nohighlight">\(O(n)\)</span> per token</p></li>
+</ul>
+</section>
+<section id="space-complexity">
+<h3>Space Complexity<a class="headerlink" href="#space-complexity" title="Link to this heading"></a></h3>
+<ul class="simple">
+<li><p><strong>Generation</strong>: <span class="math notranslate nohighlight">\(O(V)\)</span> for probability storage</p></li>
+<li><p><strong>Detection</strong>: <span class="math notranslate nohighlight">\(O(1)\)</span> for most algorithms</p></li>
+<li><p><strong>Hash storage</strong>: <span class="math notranslate nohighlight">\(O(n)\)</span> for context window</p></li>
+</ul>
+</section>
+</section>
+<section id="security-considerations">
+<h2>Security Considerations<a class="headerlink" href="#security-considerations" title="Link to this heading"></a></h2>
+<section id="adversarial-attacks">
+<h3>Adversarial Attacks<a class="headerlink" href="#adversarial-attacks" title="Link to this heading"></a></h3>
+<p>Watermarking algorithms may be vulnerable to various attacks:</p>
+<ol class="arabic simple">
+<li><p><strong>Paraphrasing</strong>: Rewriting text to remove watermarks</p></li>
+<li><p><strong>Token Substitution</strong>: Replacing tokens with synonyms</p></li>
+<li><p><strong>Text Truncation</strong>: Removing parts of the text</p></li>
+<li><p><strong>Model Fine-tuning</strong>: Training to avoid watermarking</p></li>
+</ol>
+</section>
+<section id="robustness-measures">
+<h3>Robustness Measures<a class="headerlink" href="#robustness-measures" title="Link to this heading"></a></h3>
+<p>To improve robustness:</p>
+<ol class="arabic simple">
+<li><p><strong>Multiple Algorithms</strong>: Use different watermarking schemes</p></li>
+<li><p><strong>Parameter Randomization</strong>: Vary parameters across generations</p></li>
+<li><p><strong>Ensemble Detection</strong>: Combine multiple detection methods</p></li>
+<li><p><strong>Adversarial Training</strong>: Train against known attacks</p></li>
+</ol>
+</section>
+</section>
+<section id="theoretical-bounds">
+<h2>Theoretical Bounds<a class="headerlink" href="#theoretical-bounds" title="Link to this heading"></a></h2>
+<section id="information-theoretic-limits">
+<h3>Information-Theoretic Limits<a class="headerlink" href="#information-theoretic-limits" title="Link to this heading"></a></h3>
+<p>The maximum information that can be embedded is bounded by:</p>
+<div class="math notranslate nohighlight">
+\[I \leq H(P) - H(P_w)\]</div>
+<p>where <span class="math notranslate nohighlight">\(H(\cdot)\)</span> is the entropy.</p>
+</section>
+<section id="detection-bounds">
+<h3>Detection Bounds<a class="headerlink" href="#detection-bounds" title="Link to this heading"></a></h3>
+<p>For a given false positive rate <span class="math notranslate nohighlight">\(\alpha\)</span>, the minimum detectable watermark strength is:</p>
+<div class="math notranslate nohighlight">
+\[\gamma_{\min} = \sqrt{\frac{2 \log(1/\alpha)}{L}}\]</div>
+<p>where <span class="math notranslate nohighlight">\(L\)</span> is the text length.</p>
+</section>
+</section>
+<section id="references">
+<h2>References<a class="headerlink" href="#references" title="Link to this heading"></a></h2>
+<ol class="arabic simple">
+<li><p>Kirchenbauer, J., et al. (2023). “A Watermark for Large Language Models.” arXiv:2301.10226.</p></li>
+<li><p>Aaronson, S., &amp; Kirchner, H. (2023). “A Statistical Approach to Neural Text Generation.” arXiv:2301.03109.</p></li>
+<li><p>Kuditipudi, R., et al. (2023). “Robust Distortion-Free Watermarks for Language Models.” arXiv:2307.15593.</p></li>
+</ol>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This mathematical foundation provides the theoretical basis for the watermarking algorithms.
+For practical implementation details, see the <a class="reference internal" href="api.html"><span class="doc">API Reference</span></a> documentation.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="examples.html" class="btn btn-neutral float-left" title="Examples" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="contributing.html" class="btn btn-neutral float-right" title="Contributing to vLLM-Watermark" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Your Name.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
