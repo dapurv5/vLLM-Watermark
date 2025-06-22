@@ -43,14 +43,23 @@ jobs:
     - name: Install Python dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -e ".[dev]"
-        pip install sphinx sphinx-rtd-theme myst-parser
+        # Install core dependencies directly to avoid build issues
+        pip install numpy torch transformers
+        pip install vllm==0.2.7  # Pin vLLM version for consistency
+        pip install sglang
+        pip install loguru scipy
+        # Install documentation dependencies
+        pip install sphinx sphinx-rtd-theme sphinx-autodoc-typehints
+        pip install myst-parser
 
     - name: Build documentation
       run: |
         cd docs
+        make clean
         make html
         make linkcheck  # Check for broken links
+      env:
+        PYTHONPATH: ${{ github.workspace }}
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
