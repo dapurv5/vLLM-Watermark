@@ -65,7 +65,20 @@ html_theme_options = {
     "sticky_navigation": True,
     "includehidden": True,
     "logo_only": False,
+    "display_version": True,
+    "prev_next_buttons_location": "bottom",
+    "style_external_links": False,
+    "vcs_pageview_mode": "blob",
+    "style_nav_header_background": "#2980B9",
+    # Toc options
+    "canonical_url": "https://vermaapurv.com/vLLM-Watermark/",
+    "analytics_id": "",  #  Provide your Google Analytics ID
+    "analytics_anonymize_ip": False,
 }
+
+# Base URL for the HTML pages.
+# This is used to generate correct links to static files.
+html_baseurl = "/vLLM-Watermark/"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
