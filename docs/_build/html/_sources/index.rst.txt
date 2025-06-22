@@ -12,7 +12,6 @@ vLLM-Watermark is a Python package for implementing various watermarking algorit
    :caption: Contents:
 
    installation
-   usage
    api
    examples
    mathematical_foundations
@@ -31,7 +30,7 @@ For development installation:
 
 .. code-block:: bash
 
-   git clone https://github.com/yourusername/vllm-watermark.git
+   git clone https://github.com/dapurv5/vLLM-Watermark.git
    cd vllm-watermark
    pip install -e ".[dev]"
 

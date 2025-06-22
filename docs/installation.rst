@@ -6,8 +6,8 @@ This guide covers how to install vLLM-Watermark on different platforms and envir
 System Requirements
 -------------------
 
-- **Python**: 3.8 or higher
-- **CUDA**: 11.8 or higher (for GPU acceleration)
+- **Python**: 3.11 or higher
+- **CUDA**: 12.2 or higher (for GPU acceleration)
 - **Memory**: At least 8GB RAM (16GB+ recommended)
 - **Storage**: 2GB+ free space for models and dependencies
 
@@ -40,7 +40,7 @@ To install from the latest development version:
 
 .. code-block:: bash
 
-   git clone https://github.com/yourusername/vllm-watermark.git
+   git clone https://github.com/dapurv5/vLLM-Watermark.git
    cd vllm-watermark
    pip install -e ".[dev]"
 
@@ -184,7 +184,7 @@ For contributors and developers:
 .. code-block:: bash
 
    # Clone the repository
-   git clone https://github.com/yourusername/vllm-watermark.git
+   git clone https://github.com/dapurv5/vLLM-Watermark.git
    cd vllm-watermark
 
    # Create virtual environment

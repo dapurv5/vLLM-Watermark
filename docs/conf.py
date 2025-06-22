@@ -18,8 +18,8 @@ sys.path.insert(0, os.path.abspath(".."))
 # -- Project information -----------------------------------------------------
 
 project = "vLLM-Watermark"
-copyright = "2024, Your Name"
-author = "Your Name"
+copyright = "2024, Apurv Verma"
+author = "Apurv Verma"
 
 # The full version, including alpha/beta/rc tags
 release = "0.1.0"

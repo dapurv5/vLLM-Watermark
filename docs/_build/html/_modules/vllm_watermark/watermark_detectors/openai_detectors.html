@@ -12,6 +12,7 @@
 
   
     <link rel="shortcut icon" href="../../../_static/vLLM-WM-Logo.png"/>
+    <link rel="canonical" href="/vLLM-Watermark/_modules/vllm_watermark/watermark_detectors/openai_detectors.html" />
       <script src="../../../_static/jquery.js?v=5d32c60e"></script>
       <script src="../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="../../../_static/documentation_options.js?v=01f34227"></script>
@@ -26,7 +27,7 @@
   <div class="wy-grid-for-nav">
     <nav data-toggle="wy-nav-shift" class="wy-nav-side">
       <div class="wy-side-scroll">
-        <div class="wy-side-nav-search" >
+        <div class="wy-side-nav-search"  style="background: #2980B9" >
 
           
           
@@ -65,39 +66,6 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../installation.html#development-setup">Development Setup</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../../installation.html#next-steps">Next Steps</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../../usage.html">Usage Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#quick-start">Quick Start</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#basic-example">Basic Example</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#watermarking-algorithms">Watermarking Algorithms</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#openai-watermarking">OpenAI Watermarking</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#maryland-watermarking">Maryland Watermarking</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#pf-watermarking">PF Watermarking</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#detection-methods">Detection Methods</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#openai-detection">OpenAI Detection</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#maryland-detection">Maryland Detection</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#pf-detection">PF Detection</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#advanced-usage">Advanced Usage</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#custom-sampling-parameters">Custom Sampling Parameters</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#batch-processing">Batch Processing</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#parameter-tuning">Parameter Tuning</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#error-handling">Error Handling</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#performance-optimization">Performance Optimization</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#gpu-memory-management">GPU Memory Management</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../usage.html#caching-and-reuse">Caching and Reuse</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#best-practices">Best Practices</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../usage.html#next-steps">Next Steps</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../api.html">API Reference</a><ul>
@@ -308,73 +276,17 @@
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../examples.html#advanced-examples">Advanced Examples</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../examples.html#multi-algorithm-comparison">Multi-Algorithm Comparison</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#parameter-optimization">Parameter Optimization</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../../../examples.html#batch-processing">Batch Processing</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../examples.html#production-use-cases">Production Use Cases</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../examples.html#api-server">API Server</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#content-moderation">Content Moderation</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="../../../examples.html#research-applications">Research Applications</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="../../../examples.html#a-b-testing-framework">A/B Testing Framework</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../examples.html#error-handling-examples">Error Handling Examples</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../examples.html#robust-error-handling">Robust Error Handling</a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="../../../mathematical_foundations.html">Mathematical Foundations</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#overview">Overview</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#mathematical-notation">Mathematical Notation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#openai-watermarking-algorithm">OpenAI Watermarking Algorithm</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#mathematical-formulation">Mathematical Formulation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#detection-algorithm">Detection Algorithm</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#z-score-approximation">Z-Score Approximation</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#maryland-watermarking-algorithm">Maryland Watermarking Algorithm</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#id1">Mathematical Formulation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#id2">Detection Algorithm</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#pf-watermarking-algorithm">PF Watermarking Algorithm</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#id3">Mathematical Formulation</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#id4">Detection Algorithm</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#statistical-properties">Statistical Properties</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#false-positive-rate">False Positive Rate</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#false-negative-rate">False Negative Rate</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#detection-power">Detection Power</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#parameter-selection">Parameter Selection</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#watermark-strength-gamma">Watermark Strength <span class="math notranslate nohighlight">\(\gamma\)</span></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#optimal-selection">Optimal Selection</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#detection-threshold-delta">Detection Threshold <span class="math notranslate nohighlight">\(\delta\)</span></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#n-gram-size-n">N-gram Size <span class="math notranslate nohighlight">\(n\)</span></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#computational-complexity">Computational Complexity</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#time-complexity">Time Complexity</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#space-complexity">Space Complexity</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#security-considerations">Security Considerations</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#adversarial-attacks">Adversarial Attacks</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#robustness-measures">Robustness Measures</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#theoretical-bounds">Theoretical Bounds</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#information-theoretic-limits">Information-Theoretic Limits</a></li>
-<li class="toctree-l3"><a class="reference internal" href="../../../mathematical_foundations.html#detection-bounds">Detection Bounds</a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="../../../mathematical_foundations.html#references">References</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../../contributing.html">Contributing to vLLM-Watermark</a><ul>
@@ -402,7 +314,7 @@
       </div>
     </nav>
 
-    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #2980B9" >
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
           <a href="../../../index.html">vLLM-Watermark</a>
       </nav>
@@ -535,7 +447,7 @@
   <hr/>
 
   <div role="contentinfo">
-    <p>&#169; Copyright 2024, Your Name.</p>
+    <p>&#169; Copyright 2024, Apurv Verma.</p>
   </div>
 
   Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a

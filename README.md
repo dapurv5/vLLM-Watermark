@@ -26,22 +26,22 @@ vLLM-Watermark is a comprehensive Python package that extends [vLLM](https://git
 
 | Algorithm | Description | Paper |
 |-----------|-------------|-------|
-| **OpenAI** | Power-law transformation with n-gram hashing | [A Watermark for Large Language Models](https://arxiv.org/abs/2301.10226) |
-| **Maryland** | Statistical watermarking with hypothesis testing | [A Statistical Approach to Neural Text Generation](https://arxiv.org/abs/1906.02429) |
-| **PF** | Prefix-free coding watermarking | [Prefix-Free Code Distribution Matching](https://arxiv.org/abs/2201.12677) |
+| **Maryland** | Statistical watermarking with hypothesis testing | [A Watermark for Large Language Models](https://arxiv.org/pdf/2301.10226) |
+| **OpenAI** | Power-law transformation with n-gram hashing | [Gumbel Watermarking](https://scottaaronson.blog/?p=6823) |
+| **PF** | Prefix-free coding watermarking | [Permute-and-Flip Watermarking](https://arxiv.org/abs/2402.05864) |
 
 ## Installation
 
 ### From PyPI
 
 ```bash
-pip install vllm-watermark
+pip install vllm-watermark  # (not available yet)
 ```
 
 ### From Source
 
 ```bash
-git clone https://github.com/yourusername/vllm-watermark.git
+git clone https://github.com/dapurv5/vLLM-Watermark.git
 cd vllm-watermark
 pip install -e ".[dev]"
 ```
@@ -127,37 +127,13 @@ Check out the `examples/` directory for complete working examples:
 
 For detailed documentation, including API reference, mathematical foundations, and advanced usage patterns, visit:
 
-📖 **[Documentation](https://vllm-watermark.readthedocs.io/)**
+📖 **[Documentation](https://vermaapurv.com/vLLM-Watermark/index.html)**
 
-## Mathematical Foundation
-
-vLLM-Watermark implements several watermarking algorithms based on rigorous mathematical foundations:
-
-### OpenAI Watermarking
-
-The OpenAI algorithm uses a power-law transformation:
-
-$$P_w(t) = \frac{P(t)^\gamma}{\sum_{t'} P(t')^\gamma}$$
-
-where $P(t)$ is the original token probability and $\gamma$ controls the watermark strength.
-
-### Maryland Watermarking
-
-The Maryland approach uses hypothesis testing with:
-
-$$H_0: \text{Text is not watermarked}$$
-$$H_1: \text{Text is watermarked}$$
-
-Detection is based on statistical significance testing of n-gram distributions.
-
-## Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
 ### Development Setup
 
 ```bash
-git clone https://github.com/yourusername/vllm-watermark.git
+git clone https://github.com/dapurv5/vLLM-Watermark.git
 cd vllm-watermark
 pip install -e ".[dev]"
 pre-commit install
@@ -179,10 +155,10 @@ If you use vLLM-Watermark in your research, please cite:
 
 ```bibtex
 @software{vllm_watermark,
-  title={vLLM-Watermark: A Python package for implementing various watermarking algorithms for LLM outputs},
-  author={Your Name},
-  year={2024},
-  url={https://github.com/yourusername/vllm-watermark}
+  title={vLLM-Watermark: A Python package for implementing various watermarking algorithms in vLLM},
+  author={Apurv Verma},
+  year={2025},
+  url={https://github.com/dapurv5/vLLM-Watermark}
 }
 ```
 
@@ -194,9 +170,9 @@ If you use vLLM-Watermark in your research, please cite:
 
 ## Support
 
-- 📚 [Documentation](https://vllm-watermark.readthedocs.io/)
-- 🐛 [Issue Tracker](https://github.com/yourusername/vllm-watermark/issues)
-- 💬 [Discussions](https://github.com/yourusername/vllm-watermark/discussions)
+- 📚 [Documentation](https://vermaapurv.com/vLLM-Watermark/index.html)
+- 🐛 [Issue Tracker](https://github.com/dapurv5/vLLM-Watermark/issues)
+- 💬 [Discussions](https://github.com/dapurv5/vLLM-Watermark/discussions)
 
 ---
 
