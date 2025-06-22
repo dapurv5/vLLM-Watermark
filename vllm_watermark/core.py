@@ -8,9 +8,90 @@ from vllm.v1.sample.sampler import Sampler as V1Sampler
 
 
 class WatermarkingAlgorithm(Enum):
+    """Supported watermarking algorithms for generation."""
+
     OPENAI = "openai"
-    PF = "pf"
     MARYLAND = "maryland"
+    PF = "pf"
+
+
+class DetectionAlgorithm(Enum):
+    """Supported detection algorithms (may have multiple variants per watermarking algorithm)."""
+
+    OPENAI = "openai"
+    OPENAI_Z = "openai_z"
+    MARYLAND = "maryland"
+    MARYLAND_Z = "maryland_z"
+    PF = "pf"
+
+
+class WatermarkUtils:
+    """Shared utility functions for watermarking components."""
+
+    @staticmethod
+    def infer_vocab_size(model, tokenizer):
+        """Infer vocab size from model to handle Llama tokenizer issues."""
+        # Try to get vocab size from vLLM model config first
+        if hasattr(model, "llm_engine"):
+            try:
+                if hasattr(model.llm_engine, "model_executor"):
+                    if hasattr(model.llm_engine.model_executor, "driver_worker"):
+                        worker = model.llm_engine.model_executor.driver_worker
+                        if hasattr(worker, "model_runner") and hasattr(
+                            worker.model_runner, "model"
+                        ):
+                            model_config = worker.model_runner.model.config
+                            if hasattr(model_config, "vocab_size"):
+                                logger.info(
+                                    f"Found vocab size from model config: {model_config.vocab_size}"
+                                )
+                                return model_config.vocab_size
+            except Exception as e:
+                logger.debug(f"Could not get vocab size from model config: {e}")
+
+        # Try HuggingFace model approach
+        if hasattr(model, "config") and hasattr(model.config, "vocab_size"):
+            logger.info(
+                f"Found vocab size from HF model config: {model.config.vocab_size}"
+            )
+            return model.config.vocab_size
+
+        # Fallback to tokenizer methods
+        try:
+            vocab_size = len(tokenizer.get_vocab())
+            logger.info(f"Found vocab size from tokenizer len(): {vocab_size}")
+            return vocab_size
+        except Exception as e:
+            logger.debug(f"Could not get vocab size from tokenizer.get_vocab(): {e}")
+
+        try:
+            vocab_size = tokenizer.vocab_size
+            logger.info(f"Found vocab size from tokenizer.vocab_size: {vocab_size}")
+            return vocab_size
+        except Exception as e:
+            logger.debug(f"Could not get vocab size from tokenizer.vocab_size: {e}")
+
+        # Final fallback
+        logger.warning("Could not determine vocab size, using default 50257")
+        return 50257
+
+    @staticmethod
+    def get_tokenizer(model_or_tokenizer):
+        """Extract tokenizer from model or return tokenizer directly."""
+        if hasattr(model_or_tokenizer, "get_tokenizer"):
+            # vLLM model
+            return model_or_tokenizer.get_tokenizer()
+        elif hasattr(model_or_tokenizer, "tokenizer"):
+            # HuggingFace model with tokenizer attribute
+            return model_or_tokenizer.tokenizer
+        elif hasattr(model_or_tokenizer, "encode"):
+            # Already a tokenizer
+            return model_or_tokenizer
+        else:
+            raise ValueError(
+                "Could not extract tokenizer from the provided object. "
+                "Please provide either a model with get_tokenizer() method or a tokenizer directly."
+            )
 
 
 class WatermarkedLLM:
@@ -204,22 +285,10 @@ class WatermarkedLLMs:
         debug: bool = False,
         **kwargs,
     ) -> WatermarkedLLM:
-        if algo == WatermarkingAlgorithm.OPENAI:
-            from vllm_watermark.samplers.custom_sampler import CustomSampler
-            from vllm_watermark.watermark_generators.openai_generator import (
-                OpenaiGenerator,
-            )
+        from vllm_watermark.samplers.custom_sampler import CustomSampler
+        from vllm_watermark.watermark_generators import WatermarkGenerators
 
-            generator = OpenaiGenerator(model, model.get_tokenizer(), **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)
-            return WatermarkedLLM(model, sampler, debug=debug)
-        elif algo == WatermarkingAlgorithm.MARYLAND:
-            from vllm_watermark.samplers.custom_sampler import CustomSampler
-            from vllm_watermark.watermark_generators.maryland_generator import (
-                MarylandGenerator,
-            )
-
-            generator = MarylandGenerator(model, model.get_tokenizer(), **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)
-            return WatermarkedLLM(model, sampler, debug=debug)
-        raise ValueError(f"Unknown watermarking algorithm: {algo}")
+        # Use the generator factory to create the appropriate generator
+        generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
+        sampler = CustomSampler(model, generator, debug=debug)
+        return WatermarkedLLM(model, sampler, debug=debug)

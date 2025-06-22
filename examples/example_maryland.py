@@ -16,23 +16,23 @@ from vllm_watermark.watermark_detectors import WatermarkDetectors
 # Load the vLLM model
 llm = LLM(model="meta-llama/Llama-3.2-1B")
 
-# Create an OpenAI watermarked LLM (this wraps and patches the LLM)
+# Create a Maryland watermarked LLM (this wraps and patches the LLM)
 wm_llm = WatermarkedLLMs.create(
-    llm, algo=WatermarkingAlgorithm.OPENAI, seed=42, ngram=2
+    llm, algo=WatermarkingAlgorithm.MARYLAND, seed=42, ngram=2, gamma=0.5
 )
 
-# Create OpenAI detector with matching parameters
+# Create Maryland detector with matching parameters
 detector = WatermarkDetectors.create(
-    algo=DetectionAlgorithm.OPENAI_Z,
+    algo=DetectionAlgorithm.MARYLAND_Z,
     model=llm,  # Factory handles tokenizer extraction and vocab size inference
     ngram=2,
     seed=42,
-    payload=0,  # Match the generator's payload
+    gamma=0.5,  # Match the generator's gamma
     threshold=0.05,
 )
 
 # Example prompt
-prompts = ["Write a short poem about artificial intelligence"]
+prompts = ["Write a short story about a robot learning to paint"]
 
 # Sampling parameters
 sampling_params = SamplingParams(temperature=0.8, top_p=0.95, max_tokens=64)
@@ -40,7 +40,7 @@ sampling_params = SamplingParams(temperature=0.8, top_p=0.95, max_tokens=64)
 # Generate outputs using the watermarked LLM
 outputs = wm_llm.generate(prompts, sampling_params)
 
-print("=== OPENAI WATERMARK EXAMPLE ===")
+print("=== MARYLAND WATERMARK EXAMPLE ===")
 # Print the outputs and detection results
 for output in outputs:
     prompt = output.prompt
@@ -50,7 +50,7 @@ for output in outputs:
 
     # Test detection on watermarked text
     detection_result = detector.detect(generated_text)
-    print("OpenAI Detector Results:")
+    print("Maryland Detector Results:")
     print(f"  Is watermarked: {detection_result['is_watermarked']}")
     print(f"  Detection score: {detection_result['score']:.4f}")
     print(f"  P-value: {detection_result['pvalue']:.6f}")
@@ -63,17 +63,19 @@ non_watermarked_text = "This is a test sentence that was not generated with wate
 print(f"Non-watermarked text: {non_watermarked_text!r}\n")
 
 non_wm_result = detector.detect(non_watermarked_text)
-print("OpenAI Detector Results:")
+print("Maryland Detector Results:")
 print(f"  Is watermarked: {non_wm_result['is_watermarked']}")
 print(f"  Detection score: {non_wm_result['score']:.4f}")
 print(f"  P-value: {non_wm_result['pvalue']:.6f}")
 
 print("\n=== EXPLANATION ===")
-print("OpenAI watermarking uses power-law transformation of random values.")
+print("Maryland watermarking uses greenlist-based token biasing.")
+print("It increases the probability of 'green' tokens based on the previous context.")
+print(
+    "The gamma parameter controls the strength of the bias (higher = stronger watermark)."
+)
 print(
     "Lower p-values (< threshold) indicate higher confidence that text is watermarked."
 )
 print("The detector uses z-score approximation for fast p-value calculation.")
-print(
-    "Make sure generator and detector use the same parameters (seed, ngram, payload)."
-)
+print("Make sure generator and detector use the same parameters (seed, ngram, gamma).")

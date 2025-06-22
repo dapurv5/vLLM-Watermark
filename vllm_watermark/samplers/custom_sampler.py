@@ -1,7 +1,7 @@
 import torch
 from loguru import logger
 
-from vllm_watermark.watermark_generators.base import BaseGenerator
+from vllm_watermark.watermark_generators.base import WmGenerator
 
 # Import the correct sampler based on vLLM version
 try:
@@ -25,7 +25,7 @@ except ImportError:
 
 # Override the sampler to apply Watermarking
 class CustomSampler(base_sampler_class):
-    def __init__(self, model, watermark_generator: BaseGenerator, debug=False):
+    def __init__(self, model, watermark_generator: WmGenerator, debug=False):
         super().__init__()
         self.llm = model
         self.watermark_generator = watermark_generator
@@ -48,7 +48,7 @@ class CustomSampler(base_sampler_class):
         self,
         logits: torch.Tensor,
         sampling_metadata: SamplingMetadata,
-        watermark_generator: BaseGenerator,
+        watermark_generator: WmGenerator,
         debug: bool = False,
     ):
         if debug:
@@ -158,7 +158,7 @@ class CustomSampler(base_sampler_class):
         self,
         batch_size,
         sampling_metadata,
-        watermark_generator: BaseGenerator,
+        watermark_generator: WmGenerator,
         debug: bool = False,
     ):
         """Build n-gram contexts for watermarking."""

@@ -158,29 +158,3 @@ class WmGenerator(ABC):
     ) -> torch.LongTensor:
         """Sample next token using the watermarking algorithm."""
         pass
-
-
-class BaseGenerator(WmGenerator):
-    """Legacy base class for backward compatibility."""
-
-    def sample_next(self, *args, **kwargs):
-        """Vanilla sampling with temperature and top p."""
-        logits, ngram_tokens, temperature, top_p = args[:4]
-
-        if temperature > 0:
-            probs = torch.softmax(logits / temperature, dim=-1)
-            probs_sort, probs_idx = torch.sort(probs, dim=-1, descending=True)
-            probs_sum = torch.cumsum(probs_sort, dim=-1)
-            mask = probs_sum - probs_sort > top_p
-            probs_sort[mask] = 0.0
-            probs_sort.div_(probs_sort.sum(dim=-1, keepdim=True))
-            next_token = torch.multinomial(
-                probs_sort, num_samples=1, generator=self.rng
-            )  # one hot of next token, ordered by original probs
-            next_token = torch.gather(
-                probs_idx, -1, next_token
-            )  # one hot of next token, ordered by vocab
-        else:
-            next_token = torch.argmax(logits, dim=-1)
-        next_token = next_token.reshape(-1)
-        return next_token

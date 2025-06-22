@@ -1,6 +1,9 @@
 """Watermark detectors module."""
 
 from .base import WmDetector
+
+# Import the factory
+from .factory import WatermarkDetectors
 from .maryland_detectors import MarylandDetector, MarylandDetectorZ
 from .openai_detectors import OpenaiDetector, OpenaiDetectorZ
 from .pf_detector import PFDetector
@@ -12,4 +15,5 @@ __all__ = [
     "OpenaiDetector",
     "OpenaiDetectorZ",
     "PFDetector",
+    "WatermarkDetectors",  # The main factory users should use
 ]
