@@ -7,7 +7,7 @@ System Requirements
 -------------------
 
 - **Python**: 3.11 or higher
-- **CUDA**: 12.2 or higher (for GPU acceleration)
+- **CUDA**: 12.4 or higher (for GPU acceleration)
 - **Memory**: At least 8GB RAM (16GB+ recommended)
 - **Storage**: 2GB+ free space for models and dependencies
 
