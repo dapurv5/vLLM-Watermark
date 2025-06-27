@@ -2,6 +2,7 @@
 
 from typing import Optional, Union
 
+import torch
 from loguru import logger
 
 # Import shared enums and utilities
@@ -99,6 +100,24 @@ class WatermarkGenerators:
                 seeding=seeding,
                 salt_key=salt_key,
                 gamma=gamma,
+                **kwargs,
+            )
+        elif algo == WatermarkingAlgorithm.MARYLAND_L:
+            # For MARYLAND_L, we return the logit processor directly
+            # instead of a generator, since this will be used differently
+            from vllm_watermark.logit_processors import MarylandLogitProcessor
+
+            vocab_size = WatermarkUtils.infer_vocab_size(model, tokenizer)
+
+            return MarylandLogitProcessor(
+                vocab_size=vocab_size,
+                gamma=gamma,
+                ngram=ngram,
+                seed=seed,
+                salt_key=salt_key,
+                payload=payload,
+                seeding=seeding,
+                device="cuda" if torch.cuda.is_available() else "cpu",
                 **kwargs,
             )
         elif algo == WatermarkingAlgorithm.PF:

@@ -1,9 +1,11 @@
 import os
 import sys
 
-# export VLLM_ENABLE_V1_MULTIPROCESSING=0
+# Disable vLLM V1 engine to use logits processors (V1 doesn't support them)
 os.environ["VLLM_USE_V1"] = "0"
+# Also disable V1 multiprocessing for good measure
 os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from vllm import LLM, SamplingParams
@@ -18,12 +20,12 @@ from vllm_watermark.watermark_detectors import WatermarkDetectors
 # Load the vLLM model
 llm = LLM(model="meta-llama/Llama-3.2-1B")
 
-# Create a Maryland watermarked LLM (this wraps and patches the LLM)
+# Create a Maryland_L watermarked LLM (this uses logit processors instead of sampler patching)
 wm_llm = WatermarkedLLMs.create(
-    llm, algo=WatermarkingAlgorithm.MARYLAND, seed=42, ngram=2, gamma=0.5
+    llm, algo=WatermarkingAlgorithm.MARYLAND_L, seed=42, ngram=2, gamma=0.5
 )
 
-# Create Maryland detector with matching parameters
+# Create Maryland detector with matching parameters (same detector works for both MARYLAND and MARYLAND_L)
 detector = WatermarkDetectors.create(
     algo=DetectionAlgorithm.MARYLAND_Z,
     model=llm,  # Factory handles tokenizer extraction and vocab size inference
@@ -42,7 +44,7 @@ sampling_params = SamplingParams(temperature=0.8, top_p=0.95, max_tokens=64)
 # Generate outputs using the watermarked LLM
 outputs = wm_llm.generate(prompts, sampling_params)
 
-print("=== MARYLAND WATERMARK EXAMPLE ===")
+print("=== MARYLAND_L WATERMARK EXAMPLE ===")
 # Print the outputs and detection results
 for output in outputs:
     prompt = output.prompt
@@ -69,6 +71,34 @@ print("Maryland Detector Results:")
 print(f"  Is watermarked: {non_wm_result['is_watermarked']}")
 print(f"  Detection score: {non_wm_result['score']:.4f}")
 print(f"  P-value: {non_wm_result['pvalue']:.6f}")
+
+print("\n=== MARYLAND vs MARYLAND_L COMPARISON ===")
+print("Both MARYLAND and MARYLAND_L use the same watermarking algorithm,")
+print("but with different implementation approaches:")
+print("")
+print("MARYLAND (Traditional):")
+print("  • Uses sampler patching to modify vLLM's sampling behavior")
+print("  • Patches the sampler directly in the vLLM engine")
+print("  • May have compatibility issues with some vLLM versions")
+print("")
+print("MARYLAND_L (Logit Processor):")
+print("  • Uses vLLM's native logit processor support")
+print("  • Passes logit processors through SamplingParams")
+print("  • Better compatibility with different vLLM versions")
+print("  • Can be combined with other logit processors")
+print("")
+print("Detection is identical for both approaches since the watermarking")
+print("algorithm is the same - only the implementation differs.")
+
+print("\n=== STANDALONE LOGIT PROCESSOR USAGE ===")
+print("You can also use the Maryland logit processor directly:")
+print("")
+print("from vllm_watermark.logit_processors import MarylandLogitProcessor")
+print(
+    "processor = MarylandLogitProcessor(vocab_size=128256, gamma=0.5, ngram=2, seed=42)"
+)
+print("params = SamplingParams(logits_processors=[processor])")
+print("outputs = llm.generate(prompts, params)")
 
 print("\n=== EXPLANATION ===")
 print("Maryland watermarking uses greenlist-based token biasing.")

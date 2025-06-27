@@ -12,6 +12,7 @@ class WatermarkingAlgorithm(Enum):
 
     OPENAI = "openai"
     MARYLAND = "maryland"
+    MARYLAND_L = "maryland_l"  # Maryland with logit processor (no sampler patching)
     PF = "pf"
 
 
@@ -99,11 +100,22 @@ class WatermarkedLLM:
         self,
         llm: LLM,
         sampler: Union[Sampler, V1Sampler] = None,
+        logit_processor=None,
         debug: bool = False,
     ):
         self.llm = llm
         self.sampler = sampler
+        self.logit_processor = logit_processor
         self.debug = debug
+
+        # Validate that exactly one of sampler or logit_processor is provided
+        if sampler is not None and logit_processor is not None:
+            raise ValueError(
+                "Cannot provide both sampler and logit_processor. Choose one approach."
+            )
+        if sampler is None and logit_processor is None:
+            raise ValueError("Must provide either sampler or logit_processor.")
+
         if self.sampler is not None:
             self._patch_vllm_sampling()
 
@@ -270,10 +282,55 @@ class WatermarkedLLM:
                     ]
                 )
 
-    def generate(self, *args, **kwargs):
+    def _is_v1_engine(self):
+        """Check if we're using vLLM V1 engine."""
+        return hasattr(self.llm.llm_engine, "engine_core")
+
+    def generate(self, prompts, sampling_params=None, **kwargs):
         if self.debug:
             logger.debug("WatermarkedLLM.generate called")
-        return self.llm.generate(*args, **kwargs)
+
+        if self.logit_processor is not None:
+            # Check if we're using V1 engine, which doesn't support logits processors
+            if self._is_v1_engine():
+                raise RuntimeError(
+                    "vLLM V1 engine does not support logits processors. "
+                    "To use MARYLAND_L watermarking, you have two options:\n"
+                    "1. Disable V1 entirely by setting: VLLM_USE_V1=0\n"
+                    "2. Use MARYLAND instead of MARYLAND_L (uses sampler patching)\n\n"
+                    "Example:\n"
+                    "  import os\n"
+                    "  os.environ['VLLM_USE_V1'] = '0'\n"
+                    "  # Then recreate your LLM instance\n"
+                    "  llm = LLM(model='meta-llama/Llama-3.2-1B')\n"
+                    "  wm_llm = WatermarkedLLMs.create(llm, algo=WatermarkingAlgorithm.MARYLAND_L, ...)"
+                )
+
+            # Use logit processor approach (V0 engine)
+            # Import here to avoid circular imports
+            from vllm import SamplingParams
+
+            # If no sampling params provided, create default ones
+            if sampling_params is None:
+                sampling_params = SamplingParams()
+
+            # Clone sampling params to avoid modifying the original
+            # Use the built-in clone method to preserve all parameters correctly
+            modified_sampling_params = sampling_params.clone()
+
+            # Add our logit processor to the existing ones
+            if modified_sampling_params.logits_processors is None:
+                modified_sampling_params.logits_processors = []
+
+            modified_sampling_params.logits_processors.append(self.logit_processor)
+
+            # Generate with the modified sampling parameters
+            return self.llm.generate(
+                prompts, sampling_params=modified_sampling_params, **kwargs
+            )
+        else:
+            # Use sampler patching approach (traditional)
+            return self.llm.generate(prompts, sampling_params=sampling_params, **kwargs)
 
 
 # Factory for creating watermarked LLMs
@@ -285,10 +342,38 @@ class WatermarkedLLMs:
         debug: bool = False,
         **kwargs,
     ) -> WatermarkedLLM:
-        from vllm_watermark.samplers.custom_sampler import CustomSampler
         from vllm_watermark.watermark_generators import WatermarkGenerators
 
-        # Use the generator factory to create the appropriate generator
-        generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-        sampler = CustomSampler(model, generator, debug=debug)
-        return WatermarkedLLM(model, sampler, debug=debug)
+        if algo == WatermarkingAlgorithm.MARYLAND_L:
+            # MARYLAND_L uses logit processors instead of sampler patching
+            logit_processor = WatermarkGenerators.create(
+                algo=algo, model=model, **kwargs
+            )
+            return WatermarkedLLM(model, logit_processor=logit_processor, debug=debug)
+
+        elif algo == WatermarkingAlgorithm.OPENAI:
+            # OPENAI uses sampler patching
+            from vllm_watermark.samplers.custom_sampler import CustomSampler
+
+            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
+            sampler = CustomSampler(model, generator, debug=debug)
+            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+
+        elif algo == WatermarkingAlgorithm.MARYLAND:
+            # MARYLAND uses sampler patching
+            from vllm_watermark.samplers.custom_sampler import CustomSampler
+
+            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
+            sampler = CustomSampler(model, generator, debug=debug)
+            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+
+        elif algo == WatermarkingAlgorithm.PF:
+            # PF uses sampler patching
+            from vllm_watermark.samplers.custom_sampler import CustomSampler
+
+            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
+            sampler = CustomSampler(model, generator, debug=debug)
+            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+
+        else:
+            raise ValueError(f"Unsupported watermarking algorithm: {algo}")

@@ -2,6 +2,7 @@
 
 import torch
 
+from ..logit_processors import MarylandLogitProcessor
 from .base import WmGenerator
 
 
@@ -12,6 +13,24 @@ class MarylandGenerator(WmGenerator):
         super().__init__(*args, **kwargs)
         self.gamma = gamma
         self.delta = delta
+
+        # Initialize the Maryland logit processor
+        # We need to get vocab size from the model/tokenizer
+        from ..core import WatermarkUtils
+
+        vocab_size = WatermarkUtils.infer_vocab_size(self.model, self.tokenizer)
+
+        self.maryland_processor = MarylandLogitProcessor(
+            vocab_size=vocab_size,
+            gamma=gamma,
+            delta=delta,
+            ngram=self.ngram,
+            seed=self.seed,
+            salt_key=self.salt_key,
+            payload=self.payload,
+            seeding=self.seeding,
+            device=str(self.device),
+        )
 
     def sample_next(
         self,
@@ -65,19 +84,4 @@ class MarylandGenerator(WmGenerator):
 
     def logits_processor(self, logits, ngram_tokens):
         """Process logits to add bias to words in greenlist."""
-        bsz, vocab_size = logits.shape
-        logits = logits.clone()
-        for ii in range(ngram_tokens.shape[0]):  # batch of texts
-            seed = self.get_seed_rng(ngram_tokens[ii])
-            self.rng.manual_seed(seed)
-            # Generate permutation directly on GPU
-            vocab_permutation = torch.randperm(
-                vocab_size, generator=self.rng, device=self.device
-            )
-            greenlist = vocab_permutation[: int(self.gamma * vocab_size)]
-            # Create bias tensor directly on GPU
-            bias = torch.zeros(vocab_size, device=self.device)
-            bias[greenlist] = self.delta
-            bias = bias.roll(-self.payload)
-            logits[ii] += bias  # add bias to greenlist words
-        return logits
+        return self.maryland_processor.process_batch_logits(logits, ngram_tokens)
