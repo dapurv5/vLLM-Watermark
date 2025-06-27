@@ -19,6 +19,17 @@ except ImportError:
 
         base_sampler_class = Sampler
         logger.info("Using V0 sampler")
+
+        # This currently doesn't work because the sampler output is not iterable
+        # You shouldn't see this error if export is set properly
+        """
+        [rank0]:   File "/home/av787/anaconda3/envs/ml_dev311/lib/python3.11/site-packages/vllm/engine/llm_engine.py", line 1409, in step
+        [rank0]:     self._advance_to_next_step(
+        [rank0]:   File "/home/av787/anaconda3/envs/ml_dev311/lib/python3.11/site-packages/vllm/engine/llm_engine.py", line 1175, in _advance_to_next_step
+        [rank0]:     zip(seq_group_metadata_list, output, scheduled_seq_groups):
+        [rank0]:     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        [rank0]: TypeError: 'SamplerOutput' object is not iterable
+        """
     except ImportError:
         raise ImportError("Could not import any sampler class from vLLM")
 
