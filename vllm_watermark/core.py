@@ -4,7 +4,7 @@ from typing import Union
 from loguru import logger
 from vllm.entrypoints.llm import LLM
 from vllm.model_executor.layers.sampler import Sampler
-from vllm.v1.sample.sampler import Sampler as V1Sampler
+from vllm.v1.sample.sampler import Sampler as V1Sampler  # type: ignore
 
 
 class WatermarkingAlgorithm(Enum):
@@ -130,7 +130,7 @@ class WatermarkedLLM:
             logger.info("Detected V1 engine structure")
 
             # Check if we're using multiprocessing mode (SyncMPClient)
-            engine_core = self.llm.llm_engine.engine_core
+            engine_core = self.llm.llm_engine.engine_core  # type: ignore
             if engine_core.__class__.__name__ == "SyncMPClient":
                 raise RuntimeError(
                     "Cannot patch vLLM sampler when using V1 multiprocessing mode. "
@@ -209,26 +209,26 @@ class WatermarkedLLM:
 
                 # Check if model_executor is itself a worker with model_runner
                 if hasattr(model_executor, "model_runner") and hasattr(
-                    model_executor.model_runner, "sampler"
+                    model_executor.model_runner, "sampler"  # type: ignore
                 ):
                     possible_paths.append(
-                        ("model_executor.model_runner", model_executor.model_runner)
+                        ("model_executor.model_runner", model_executor.model_runner)  # type: ignore
                     )
 
                 # Check if model_executor has driver_worker
                 if hasattr(model_executor, "driver_worker") and hasattr(
-                    model_executor.driver_worker, "model_runner"
+                    model_executor.driver_worker, "model_runner"  # type: ignore
                 ):
                     possible_paths.append(
                         (
                             "model_executor.driver_worker.model_runner",
-                            model_executor.driver_worker.model_runner,
+                            model_executor.driver_worker.model_runner,  # type: ignore
                         )
                     )
 
                 # Check if model_executor has workers list
                 if hasattr(model_executor, "workers"):
-                    for i, worker in enumerate(model_executor.workers):
+                    for i, worker in enumerate(model_executor.workers):  # type: ignore
                         if hasattr(worker, "model_runner") and hasattr(
                             worker.model_runner, "sampler"
                         ):
@@ -356,7 +356,7 @@ class WatermarkedLLMs:
             from vllm_watermark.samplers.custom_sampler import CustomSampler
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)
+            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
             return WatermarkedLLM(model, sampler=sampler, debug=debug)
 
         elif algo == WatermarkingAlgorithm.MARYLAND:
@@ -364,7 +364,7 @@ class WatermarkedLLMs:
             from vllm_watermark.samplers.custom_sampler import CustomSampler
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)
+            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
             return WatermarkedLLM(model, sampler=sampler, debug=debug)
 
         elif algo == WatermarkingAlgorithm.PF:
@@ -372,7 +372,7 @@ class WatermarkedLLMs:
             from vllm_watermark.samplers.custom_sampler import CustomSampler
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)
+            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
             return WatermarkedLLM(model, sampler=sampler, debug=debug)
 
         else:
