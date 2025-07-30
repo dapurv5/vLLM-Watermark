@@ -99,7 +99,7 @@ class WatermarkDatasetProcessor:
             return len(text.split())
 
     def load_and_validate_data(
-        self, input_path: str, input_key: str, max_examples: int = None
+        self, input_path: str, input_key: str, max_examples: int | None = None
     ) -> List[Dict[str, Any]]:
         """Load and validate input data."""
         try:
@@ -204,7 +204,7 @@ class WatermarkDatasetProcessor:
             )
 
         if not prompts:
-            print(f"❌ No valid prompts found to process")
+            print("❌ No valid prompts found to process")
             sys.exit(1)
 
         print(f"✅ Extracted {len(prompts)} valid prompts")
@@ -324,7 +324,7 @@ class WatermarkDatasetProcessor:
         detection_time: float,
         total_tokens: int,
         num_prompts: int,
-    ) -> Dict[str, float]:
+    ) -> Dict[str, float | int]:
         """Calculate and return all performance metrics."""
         total_time = generation_time + detection_time
         avg_time_per_example = generation_time / num_prompts if num_prompts > 0 else 0
@@ -333,10 +333,12 @@ class WatermarkDatasetProcessor:
         # Detection metrics
         if len(predictions) > 0 and len(set(true_labels)) > 1:  # Need both classes
             try:
-                accuracy = accuracy_score(true_labels, predictions)
-                f1 = f1_score(true_labels, predictions)
-                precision = precision_score(true_labels, predictions, zero_division=0)
-                recall = recall_score(true_labels, predictions, zero_division=0)
+                accuracy = float(accuracy_score(true_labels, predictions))
+                f1 = float(f1_score(true_labels, predictions))
+                precision = float(
+                    precision_score(true_labels, predictions, zero_division=0)
+                )
+                recall = float(recall_score(true_labels, predictions, zero_division=0))
             except Exception as e:
                 print(f"⚠️  Error calculating metrics: {e}")
                 accuracy = f1 = precision = recall = 0.0
@@ -413,7 +415,7 @@ class WatermarkDatasetProcessor:
         temperature: float = 0.8,
         top_p: float = 0.95,
         detection_threshold: float = 0.05,
-        max_examples: int = None,
+        max_examples: int | None = None,
         gpu_memory_utilization: float = 0.8,
     ):
         """
