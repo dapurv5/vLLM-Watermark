@@ -34,7 +34,8 @@ class OpenaiDetector(WmDetector):
         """
         seed = self.get_seed_rng(ngram_tokens)
         self.rng.manual_seed(seed)
-        rs = torch.rand(self.vocab_size, generator=self.rng, device=self.device)  # n
+        vocab_size = int(self.vocab_size) if self.vocab_size is not None else 0
+        rs = torch.rand((vocab_size,), generator=self.rng, device=self.device)  # n
         rs = rs.roll(-self.payload)  # Apply payload shift like in generator
         scores = -(1 - rs).log().roll(-token_id)
         return scores.cpu()
@@ -65,7 +66,8 @@ class OpenaiDetectorZ(WmDetector):
         """same as OpenaiDetector but using zscore"""
         seed = self.get_seed_rng(ngram_tokens)
         self.rng.manual_seed(seed)
-        rs = torch.rand(self.vocab_size, generator=self.rng, device=self.device)  # n
+        vocab_size = int(self.vocab_size) if self.vocab_size is not None else 0
+        rs = torch.rand((vocab_size,), generator=self.rng, device=self.device)  # n
         rs = rs.roll(-self.payload)  # Apply payload shift like in generator
         scores = -(1 - rs).log().roll(-token_id)
         return scores.cpu()

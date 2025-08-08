@@ -1,5 +1,7 @@
 """Prefix-Free (PF) watermark generator."""
 
+from typing import cast
+
 import torch
 
 from .base import WmGenerator
@@ -54,4 +56,5 @@ class PFGenerator(WmGenerator):
         else:
             next_token = torch.argmax(logits, dim=-1)
         next_token = next_token.reshape(-1)
-        return next_token
+        next_token = next_token.to(dtype=torch.long)
+        return cast(torch.LongTensor, next_token)

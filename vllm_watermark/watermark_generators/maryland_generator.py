@@ -1,5 +1,7 @@
 """Maryland-style watermark generator."""
 
+from typing import cast
+
 import torch
 
 from ..logit_processors import MarylandLogitProcessor
@@ -56,7 +58,9 @@ class MarylandGenerator(WmGenerator):
         - mask: (bsz, vocab_size) boolean mask for top-p filtering
         - next_token: (bsz,) final sampled token indices
         """
-        logits = self.logits_processor(logits, ngram_tokens)  # (bsz, vocab_size)
+        logits = cast(
+            torch.FloatTensor, self.logits_processor(logits, ngram_tokens)
+        )  # (bsz, vocab_size)
         if temperature > 0:
             # Convert logits to probabilities with temperature scaling
             probs = torch.softmax(logits / temperature, dim=-1)  # (bsz, vocab_size)
@@ -80,7 +84,8 @@ class MarylandGenerator(WmGenerator):
             # If temperature is 0, just take argmax
             next_token = torch.argmax(logits, dim=-1)  # (bsz,)
         next_token = next_token.reshape(-1)  # (bsz,)
-        return next_token
+        next_token = next_token.to(dtype=torch.long)
+        return cast(torch.LongTensor, next_token)
 
     def logits_processor(self, logits, ngram_tokens):
         """Process logits to add bias to words in greenlist."""

@@ -31,7 +31,9 @@ class PFDetector(WmDetector):
         """
         seed = self.get_seed_rng(ngram_tokens)
         self.rng.manual_seed(seed)
-        rs = torch.rand(self.vocab_size, generator=self.rng, device=self.device)  # n
+        # torch.rand expects size as tuple for type checkers; ensure vocab_size is int
+        vocab_size = int(self.vocab_size) if self.vocab_size is not None else 0
+        rs = torch.rand((vocab_size,), generator=self.rng, device=self.device)  # n
         # Ensure rs is non-zero or assign a very small value to zero-valued elements
         rs[rs == 0] = 1e-4
         scores = -rs.log().roll(-token_id)

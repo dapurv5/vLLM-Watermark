@@ -2,6 +2,7 @@
 # Reference: https://github.com/XuandongZhao/pf-decoding
 
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 from typing import List
 
 import torch
@@ -57,28 +58,41 @@ class WmGenerator(ABC):
         # Move hashtable to GPU if available
         self.hashtable = torch.randperm(1000003).to(self.device)
 
-    def hashint(self, integer_tensor: torch.LongTensor) -> torch.LongTensor:
+    def hashint(self, integer_tensor: torch.Tensor) -> torch.Tensor:
         """Optimized hashint using GPU."""
+        # Ensure the tensor is on the same device as the hashtable
+        integer_tensor = integer_tensor.to(self.hashtable.device)
         return self.hashtable[integer_tensor % len(self.hashtable)]
 
-    def get_seed_rng(self, input_ids: torch.LongTensor) -> int:
+    def get_seed_rng(self, input_ids: torch.Tensor) -> int:
         """
         Seed RNG with hash of input_ids.
         Adapted from https://github.com/jwkirchenbauer/lm-watermarking
         """
+        # Ensure correct dtype/device handling
+        input_ids = input_ids.to(dtype=torch.long, device=self.hashtable.device)
+
         if self.seeding == "hash":
             seed = self.seed
             for i in input_ids:
-                seed = (seed * self.salt_key + i.item()) % (2**64 - 1)
+                seed = (seed * self.salt_key + int(i.item())) % (2**64 - 1)
         elif self.seeding == "additive":
-            seed = self.salt_key * torch.sum(input_ids).item()
-            seed = self.hashint(seed)
+            summed = int(torch.sum(input_ids).item())
+            seed_tensor = torch.tensor(
+                self.salt_key * summed, device=self.hashtable.device, dtype=torch.long
+            )
+            seed = int(self.hashint(seed_tensor).item())
         elif self.seeding == "skip":
-            seed = self.salt_key * input_ids[0].item()
-            seed = self.hashint(seed)
+            first_id = int(input_ids[0].item())
+            seed_tensor = torch.tensor(
+                self.salt_key * first_id, device=self.hashtable.device, dtype=torch.long
+            )
+            seed = int(self.hashint(seed_tensor).item())
         elif self.seeding == "min":
-            seed = self.hashint(self.salt_key * input_ids)
-            seed = torch.min(seed).item()
+            seed_tensor = self.hashint(self.salt_key * input_ids)
+            seed = int(torch.min(seed_tensor).item())
+        else:
+            raise ValueError(f"Unknown seeding method: {self.seeding}")
         return seed
 
     @torch.inference_mode()
@@ -116,12 +130,19 @@ class WmGenerator(ABC):
         prev_pos = 0
         outputs = None
 
-        with torch.amp.autocast("cuda"):  # Enable AMP for faster computation
+        autocast_ctx = (
+            torch.autocast(device_type="cuda")
+            if torch.cuda.is_available()
+            else nullcontext()
+        )
+        with autocast_ctx:  # Enable AMP for faster computation
             for cur_pos in range(start_pos, total_len):
                 outputs = self.model.forward(
                     tokens[:, prev_pos:cur_pos],
                     use_cache=True,
-                    past_key_values=outputs.past_key_values if prev_pos > 0 else None,
+                    past_key_values=(
+                        None if outputs is None else outputs.past_key_values
+                    ),
                 )
                 ngram_tokens = tokens[:, cur_pos - self.ngram : cur_pos]
                 next_toks = self.sample_next(
@@ -152,7 +173,7 @@ class WmGenerator(ABC):
     def sample_next(
         self,
         logits: torch.FloatTensor,  # (bsz, vocab_size): logits for last token
-        ngram_tokens: torch.LongTensor,  # (bsz, ngram): tokens to consider when seeding
+        ngram_tokens: torch.Tensor,  # (bsz, ngram): tokens to consider when seeding
         temperature: float = 0.8,  # temperature for sampling
         top_p: float = 0.95,  # top p for sampling
     ) -> torch.LongTensor:

@@ -1,8 +1,9 @@
 # Reference: https://github.com/facebookresearch/three_bricks
 
-from typing import List
+from typing import Any, List
 
 import numpy as np
+import numpy.typing as npt
 import torch
 
 
@@ -16,7 +17,7 @@ class WmDetector:
         seed: int = 0,
         seeding: str = "hash",
         salt_key: int = 35317,
-        vocab_size: int = None,
+        vocab_size: int | None = None,
         threshold: float = 0.05,
     ):
         # model config
@@ -41,11 +42,13 @@ class WmDetector:
             self.device = device
             self.rng = torch.Generator(device=device)
         else:
+            self.device = torch.device("cpu")
             self.rng = torch.Generator()
         self.rng.manual_seed(self.seed)
 
-    def hashint(self, integer_tensor: torch.LongTensor) -> torch.LongTensor:
+    def hashint(self, integer_tensor: torch.Tensor) -> torch.Tensor:
         """Adapted from https://github.com/jwkirchenbauer/lm-watermarking"""
+        integer_tensor = integer_tensor.to(dtype=torch.long)
         return self.hashtable[integer_tensor.cpu() % len(self.hashtable)]
 
     def get_seed_rng(self, input_ids: List[int]) -> int:
@@ -54,40 +57,40 @@ class WmDetector:
         Adapted from https://github.com/jwkirchenbauer/lm-watermarking
         """
         if self.seeding == "hash":
-            seed = self.seed
+            seed: int = int(self.seed)
             for i in input_ids:
                 seed = (seed * self.salt_key + i) % (2**64 - 1)
         elif self.seeding == "additive":
-            seed = self.salt_key * torch.sum(torch.tensor(input_ids))
-            seed = self.hashint(seed)
-            seed = seed.item()  # Convert tensor to int
+            tmp = self.salt_key * torch.sum(torch.tensor(input_ids))
+            tmp_hash = self.hashint(tmp)
+            seed = int(tmp_hash.item())  # Convert tensor to int
         elif self.seeding == "skip":
             seed = self.salt_key * input_ids[0]
-            seed = self.hashint(torch.tensor(seed))
-            seed = seed.item()  # Convert tensor to int
+            seed = int(self.hashint(torch.tensor(seed)).item())  # Convert tensor to int
         elif self.seeding == "min":
-            seed = self.hashint(self.salt_key * torch.tensor(input_ids))
-            seed = torch.min(seed).item()  # Convert tensor to int
+            tmp_hash = self.hashint(self.salt_key * torch.tensor(input_ids))
+            seed = int(torch.min(tmp_hash).item())  # Convert tensor to int
         return seed
 
     def aggregate_scores(
-        self, scores: List[List[np.array]], aggregation: str = "mean"
-    ) -> List[float]:
+        self, scores: List[List[np.ndarray]], aggregation: str = "mean"
+    ) -> List[np.ndarray]:
         """Aggregate scores along a text."""
-        scores = np.asarray(scores)
+        scores_arr: npt.NDArray[Any] = np.asarray(scores, dtype=object)
         if aggregation == "sum":
-            return [ss.sum(axis=0) for ss in scores]
+            return [np.sum(ss, axis=0) for ss in scores_arr]
         elif aggregation == "mean":
+            vocab_size: int = int(self.vocab_size or 0)
             return [
                 (
-                    ss.mean(axis=0)
+                    np.mean(ss, axis=0)
                     if ss.shape[0] != 0
-                    else np.ones(shape=(self.vocab_size))
+                    else np.ones(shape=(vocab_size,))
                 )
-                for ss in scores
+                for ss in scores_arr
             ]
         elif aggregation == "max":
-            return [ss.max(axis=0) for ss in scores]
+            return [np.max(ss, axis=0) for ss in scores_arr]
         else:
             raise ValueError(f"Aggregation {aggregation} not supported.")
 
@@ -95,9 +98,9 @@ class WmDetector:
         self,
         texts: List[str],
         scoring_method: str = "none",
-        ntoks_max: int = None,
+        ntoks_max: int | None = None,
         payload_max: int = 0,
-    ) -> List[np.array]:
+    ) -> List[List[np.ndarray]]:
         """Get score increment for each token in list of texts.
 
         Args:
@@ -144,7 +147,9 @@ class WmDetector:
             score_lists.append(rts)
         return score_lists
 
-    def get_pvalues(self, scores: List[np.array], eps: float = 1e-200) -> np.array:
+    def get_pvalues(
+        self, scores: List[List[np.ndarray]], eps: float = 1e-200
+    ) -> np.ndarray:
         """Get p-value for each text.
 
         Args:
@@ -153,12 +158,14 @@ class WmDetector:
         Output:
             pvalues: np array of p-values for each text and payload
         """
-        pvalues = []
-        scores = np.asarray(scores)  # bsz x ntoks x payload_max
-        for ss in scores:
+        pvalues: List[List[float]] = []
+        scores_arr: npt.NDArray[Any] = np.asarray(
+            scores, dtype=object
+        )  # bsz x ntoks x payload_max
+        for ss in scores_arr:
             ntoks = ss.shape[0]
             scores_by_payload = (
-                ss.sum(axis=0) if ntoks != 0 else np.zeros(shape=ss.shape[-1])
+                np.sum(ss, axis=0) if ntoks != 0 else np.zeros(shape=ss.shape[-1])
             )  # payload_max
             pvalues_by_payload = [
                 self.get_pvalue(score, ntoks, eps=eps) for score in scores_by_payload

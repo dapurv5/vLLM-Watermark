@@ -57,13 +57,15 @@ class MarylandLogitProcessor:
         self.rng.manual_seed(self.seed)
         self.hashtable = torch.randperm(1000003, device=self.device)
 
-    def hashint(self, integer_tensor: torch.LongTensor) -> torch.LongTensor:
+    def hashint(self, integer_tensor: torch.Tensor) -> torch.Tensor:
         """Hash integer tensor using hashtable."""
+        integer_tensor = integer_tensor.to(dtype=torch.long, device=self.device)
         return self.hashtable[integer_tensor % len(self.hashtable)]
 
-    def get_seed_rng(self, input_ids: torch.LongTensor) -> int:
+    def get_seed_rng(self, input_ids: torch.Tensor) -> int:
         """Get seed from input_ids based on seeding method."""
-        # Convert tensor to list to ensure consistency with detector
+        # Ensure dtype/device and convert to list to ensure consistency with detector
+        input_ids = input_ids.to(dtype=torch.long, device=self.device)
         input_ids_list = input_ids.cpu().tolist()
 
         if self.seeding == "hash":
@@ -71,14 +73,14 @@ class MarylandLogitProcessor:
             for i in input_ids_list:
                 seed = (seed * self.salt_key + i) % (2**64 - 1)
         elif self.seeding == "additive":
-            seed = self.salt_key * sum(input_ids_list)
-            seed = self.hashint(torch.tensor(seed, device=self.device)).item()
+            seed_val = self.salt_key * int(sum(input_ids_list))
+            seed = int(self.hashint(torch.tensor(seed_val, device=self.device)).item())
         elif self.seeding == "skip":
-            seed = self.salt_key * input_ids_list[0]
-            seed = self.hashint(torch.tensor(seed, device=self.device)).item()
+            seed_val = self.salt_key * int(input_ids_list[0])
+            seed = int(self.hashint(torch.tensor(seed_val, device=self.device)).item())
         elif self.seeding == "min":
-            seed = self.hashint(self.salt_key * input_ids)
-            seed = torch.min(seed).item()
+            seed_tensor = self.hashint(self.salt_key * input_ids)
+            seed = int(torch.min(seed_tensor).item())
         else:
             raise ValueError(f"Unknown seeding method: {self.seeding}")
         return seed
