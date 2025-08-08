@@ -36,12 +36,13 @@ class MarylandDetector(WmDetector):
         """
         seed = self.get_seed_rng(ngram_tokens)
         self.rng.manual_seed(seed)
-        scores = torch.zeros(self.vocab_size)
+        vocab_size = int(self.vocab_size) if self.vocab_size is not None else 0
+        scores = torch.zeros((vocab_size,), device=self.device)
         vocab_permutation = torch.randperm(
-            self.vocab_size, generator=self.rng, device=self.device
+            vocab_size, generator=self.rng, device=self.device
         )
         greenlist = vocab_permutation[
-            : int(self.gamma * self.vocab_size)
+            : int(self.gamma * vocab_size)
         ]  # gamma * n toks in the greenlist
         scores[greenlist] = 1
         return scores.roll(-token_id)
@@ -74,11 +75,12 @@ class MarylandDetectorZ(WmDetector):
         """same as MarylandDetector but using zscore"""
         seed = self.get_seed_rng(ngram_tokens)
         self.rng.manual_seed(seed)
-        scores = torch.zeros(self.vocab_size)
+        vocab_size = int(self.vocab_size) if self.vocab_size is not None else 0
+        scores = torch.zeros((vocab_size,), device=self.device)
         vocab_permutation = torch.randperm(
-            self.vocab_size, generator=self.rng, device=self.device
+            vocab_size, generator=self.rng, device=self.device
         )
-        greenlist = vocab_permutation[: int(self.gamma * self.vocab_size)]  # gamma * n
+        greenlist = vocab_permutation[: int(self.gamma * vocab_size)]  # gamma * n
         scores[greenlist] = 1
         return scores.roll(-token_id)
 
