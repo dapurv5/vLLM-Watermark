@@ -66,9 +66,11 @@ class CustomSampler(base_sampler_class):
             logger.debug("WatermarkedSampler.forward called")
 
         # Import the SamplerOutput class based on vLLM version
+        is_v1_outputs = False
         try:
             from vllm.v1.outputs import SamplerOutput
 
+            is_v1_outputs = True
             if debug:
                 logger.debug("Using V1 SamplerOutput")
         except ImportError:
@@ -116,8 +118,13 @@ class CustomSampler(base_sampler_class):
             return super().forward(logits, sampling_metadata)
 
         # Create SamplerOutput with our watermarked tokens
-        # For V1, the expected shape is [batch_size, 1]
-        sampled_token_ids = sampled_tokens.unsqueeze(-1)  # Shape: [batch_size, 1]
+        # Shape expectations differ between versions:
+        # - V1 expects a 1D tensor of shape [batch_size]
+        # - V0 expects a 2D tensor of shape [batch_size, 1]
+        if is_v1_outputs:
+            sampled_token_ids = sampled_tokens  # [batch_size]
+        else:
+            sampled_token_ids = sampled_tokens.unsqueeze(-1)  # [batch_size, 1]
 
         return SamplerOutput(
             sampled_token_ids=sampled_token_ids,
