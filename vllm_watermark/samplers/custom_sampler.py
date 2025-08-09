@@ -108,20 +108,70 @@ class CustomSampler(base_sampler_class):  # type: ignore[misc, valid-type]
                     if debug:
                         logger.debug("Applied watermark logits processor")
                 else:
-                    # Fallback: directly sample next tokens (kept for completeness)
-                    logits = logits.to(torch.float32)
+                    # Fallback: directly sample next tokens and enforce selection
+                    # by modifying only the rows that will be sampled by vLLM.
+                    # This alignment is necessary for V0 where logits can contain
+                    # prompt logprob rows in addition to decode rows.
+                    # 1) Determine which rows are actually sampled
+                    selected_row_indices: torch.Tensor
+                    # V0 SamplingMetadata has `seq_groups`; V1 path lacks it.
+                    # Guard with getattr to satisfy type checkers.
+                    seq_groups = getattr(sampling_metadata, "seq_groups", None)
+                    if seq_groups is not None:
+                        row_indices: list[int] = []
+                        for seq_group in seq_groups:
+                            if hasattr(seq_group, "sample_indices"):
+                                # Use explicit sample_indices which are indices
+                                # into the pruned logits tensor passed here.
+                                row_indices.extend(list(seq_group.sample_indices))
+                        if len(row_indices) == 0:
+                            # Fallback to all rows
+                            selected_row_indices = torch.arange(
+                                logits.shape[0], device=logits.device
+                            )
+                        else:
+                            selected_row_indices = torch.tensor(
+                                row_indices, device=logits.device, dtype=torch.long
+                            )
+                    else:
+                        # V1 path: assume every row corresponds to a sampled decode token
+                        selected_row_indices = torch.arange(
+                            logits.shape[0], device=logits.device
+                        )
+
+                    # 2) Sample only on selected rows to get a 1:1 mapping
+                    selected_logits = logits.index_select(0, selected_row_indices).to(
+                        torch.float32
+                    )
+                    selected_ngram_tokens = ngram_tokens.index_select(
+                        0, selected_row_indices
+                    )
                     _sampled_tokens = watermark_generator.sample_next(
-                        cast(torch.FloatTensor, logits),
-                        ngram_tokens,
+                        cast(torch.FloatTensor, selected_logits),
+                        selected_ngram_tokens,
                         temperature,
                         top_p,
                     )
-                    # Integrating directly sampled tokens into vLLM V1 output
-                    # structures is fragile; so we keep logits path as default.
-                    if debug:
-                        logger.debug(
-                            f"Direct sampled tokens (unused in V1 path): {_sampled_tokens}"
-                        )
+
+                    # 3) Force the sampler to pick our sampled tokens at those rows
+                    if _sampled_tokens is not None and len(_sampled_tokens) == len(
+                        selected_row_indices
+                    ):
+                        # Keep unrelated rows intact; only modify selected ones
+                        logits[selected_row_indices] = -float("inf")
+                        logits[
+                            selected_row_indices,
+                            _sampled_tokens.to(device=logits.device, dtype=torch.long),
+                        ] = 0.0
+                        if debug:
+                            logger.debug(
+                                f"Applied hard-selection on {len(selected_row_indices)} rows"
+                            )
+                    else:
+                        if debug:
+                            logger.debug(
+                                "Sampled tokens unavailable or length mismatch; skipping hard-selection"
+                            )
             else:
                 logger.warning(
                     "No n-gram context available, falling back to original sampler"

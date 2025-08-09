@@ -1,7 +1,7 @@
 import os
 import sys
 
-# export VLLM_USE_V1=1  # (V0 Sampler does not give correct results)
+# export VLLM_USE_V1=0
 # export VLLM_ENABLE_V1_MULTIPROCESSING=0
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
