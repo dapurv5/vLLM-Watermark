@@ -11,6 +11,7 @@ class WatermarkingAlgorithm(Enum):
     """Supported watermarking algorithms for generation."""
 
     OPENAI = "openai"
+    OPENAI_DR = "openai_dr"
     MARYLAND = "maryland"
     MARYLAND_L = "maryland_l"  # Maryland with logit processor (no sampler patching)
     PF = "pf"
@@ -369,6 +370,14 @@ class WatermarkedLLMs:
 
         elif algo == WatermarkingAlgorithm.OPENAI:
             # OPENAI uses sampler patching
+            from vllm_watermark.samplers.custom_sampler import CustomSampler
+
+            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
+            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
+            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+
+        elif algo == WatermarkingAlgorithm.OPENAI_DR:
+            # OPENAI_DR uses sampler patching (same mechanism as OPENAI)
             from vllm_watermark.samplers.custom_sampler import CustomSampler
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)

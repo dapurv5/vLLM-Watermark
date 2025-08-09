@@ -89,6 +89,19 @@ class WatermarkGenerators:
                 payload=payload,
                 **kwargs,
             )
+        elif algo == WatermarkingAlgorithm.OPENAI_DR:
+            from .openai_generator import OpenaiGeneratorDoubleRandomization
+
+            return OpenaiGeneratorDoubleRandomization(
+                model=model,
+                tokenizer=tokenizer,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                payload=payload,
+                **kwargs,
+            )
         elif algo == WatermarkingAlgorithm.MARYLAND:
             from .maryland_generator import MarylandGenerator
 
