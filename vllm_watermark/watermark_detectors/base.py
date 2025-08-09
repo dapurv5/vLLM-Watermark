@@ -142,7 +142,7 @@ class WmDetector:
                         continue
                     seen_ntuples.add(tup_for_unique)
                 rt = self.score_tok(ngram_tokens, tokens_id[ii][cur_pos])
-                rt = rt.numpy()[: payload_max + 1]
+                rt = rt.detach().cpu().numpy()[: payload_max + 1]
                 rts.append(rt)
             score_lists.append(rts)
         return score_lists
