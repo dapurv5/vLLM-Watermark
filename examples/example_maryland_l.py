@@ -1,11 +1,8 @@
 import os
 import sys
 
-# Disable vLLM V1 engine to use logits processors (V1 doesn't support them)
-os.environ["VLLM_USE_V1"] = "0"
-# Also disable V1 multiprocessing for good measure
-os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"
-
+# export VLLM_USE_V1=1  # (V0 Sampler does not give correct results)
+# export VLLM_ENABLE_V1_MULTIPROCESSING=0
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from vllm import LLM, SamplingParams

@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union
+from typing import Optional, Union
 
 from loguru import logger
 from vllm.entrypoints.llm import LLM
@@ -99,7 +99,7 @@ class WatermarkedLLM:
     def __init__(
         self,
         llm: LLM,
-        sampler: Union[Sampler, V1Sampler] = None,
+        sampler: Optional[Union[Sampler, V1Sampler]] = None,
         logit_processor=None,
         debug: bool = False,
     ):
@@ -343,6 +343,22 @@ class WatermarkedLLMs:
         **kwargs,
     ) -> WatermarkedLLM:
         from vllm_watermark.watermark_generators import WatermarkGenerators
+
+        # If running with V0 engine, prefer logits-processor variant for
+        # Maryland to avoid patching the sampler in older engine.
+        try:
+            import os
+
+            use_v1_env = os.environ.get("VLLM_USE_V1")
+            is_v1_disabled = use_v1_env is not None and use_v1_env.strip() == "0"
+        except Exception:
+            is_v1_disabled = False
+
+        if algo == WatermarkingAlgorithm.MARYLAND and is_v1_disabled:
+            logger.info(
+                "VLLM_USE_V1=0 detected; using MARYLAND_L (logit processor) instead of sampler patching."
+            )
+            algo = WatermarkingAlgorithm.MARYLAND_L
 
         if algo == WatermarkingAlgorithm.MARYLAND_L:
             # MARYLAND_L uses logit processors instead of sampler patching

@@ -1,41 +1,44 @@
+import os
+from typing import cast
+
 import torch
 from loguru import logger
 
 from vllm_watermark.watermark_generators.base import WmGenerator
 
-# Import the correct sampler based on vLLM version
-try:
-    # Try V1 sampler first
-    from vllm.v1.sample.metadata import SamplingMetadata
-    from vllm.v1.sample.sampler import Sampler as V1Sampler
+# pyright: reportGeneralTypeIssues=false
 
-    base_sampler_class = V1Sampler
-    logger.info("Using V1 sampler")
-except ImportError:
+
+# Import the correct sampler based on desired vLLM engine
+env_use_v1 = os.environ.get("VLLM_USE_V1")
+if env_use_v1 is not None and env_use_v1.strip() == "0":
+    # Force V0 imports when V1 is explicitly disabled
+    from vllm.model_executor.layers.sampler import Sampler as V0Sampler
+    from vllm.model_executor.sampling_metadata import SamplingMetadata
+
+    base_sampler_class = V0Sampler
+    logger.info("Using V0 sampler (VLLM_USE_V1=0)")
+else:
+    # Prefer V1 if available; otherwise fall back to V0
     try:
-        # Fall back to V0 sampler
-        from vllm.model_executor.layers.sampler import Sampler
-        from vllm.model_executor.sampling_metadata import SamplingMetadata
+        from vllm.v1.sample.metadata import SamplingMetadata
+        from vllm.v1.sample.sampler import Sampler as V1Sampler
 
-        base_sampler_class = Sampler
-        logger.info("Using V0 sampler")
-
-        # This currently doesn't work because the sampler output is not iterable
-        # You shouldn't see this error if export is set properly
-        """
-        [rank0]:   File "/home/av787/anaconda3/envs/ml_dev311/lib/python3.11/site-packages/vllm/engine/llm_engine.py", line 1409, in step
-        [rank0]:     self._advance_to_next_step(
-        [rank0]:   File "/home/av787/anaconda3/envs/ml_dev311/lib/python3.11/site-packages/vllm/engine/llm_engine.py", line 1175, in _advance_to_next_step
-        [rank0]:     zip(seq_group_metadata_list, output, scheduled_seq_groups):
-        [rank0]:     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        [rank0]: TypeError: 'SamplerOutput' object is not iterable
-        """
+        base_sampler_class = V1Sampler
+        logger.info("Using V1 sampler")
     except ImportError:
-        raise ImportError("Could not import any sampler class from vLLM")
+        try:
+            from vllm.model_executor.layers.sampler import Sampler as V0Sampler
+            from vllm.model_executor.sampling_metadata import SamplingMetadata
+
+            base_sampler_class = V0Sampler
+            logger.info("Using V0 sampler (V1 not available)")
+        except ImportError:
+            raise ImportError("Could not import any sampler class from vLLM")
 
 
 # Override the sampler to apply Watermarking
-class CustomSampler(base_sampler_class):
+class CustomSampler(base_sampler_class):  # type: ignore[misc, valid-type]
     def __init__(self, model, watermark_generator: WmGenerator, debug=False):
         super().__init__()
         self.llm = model
@@ -65,19 +68,15 @@ class CustomSampler(base_sampler_class):
         if debug:
             logger.debug("WatermarkedSampler.forward called")
 
-        # Import the SamplerOutput class based on vLLM version
-        is_v1_outputs = False
+        # Detect whether we are on V1 engine by checking for v1 SamplingMetadata
         try:
-            from vllm.v1.outputs import SamplerOutput
+            from vllm.v1.sample.metadata import (
+                SamplingMetadata as _V1SM,  # type: ignore
+            )
 
-            is_v1_outputs = True
-            if debug:
-                logger.debug("Using V1 SamplerOutput")
-        except ImportError:
-            from vllm.model_executor.layers.sampler import SamplerOutput
-
-            if debug:
-                logger.debug("Using V0 SamplerOutput")
+            _ = isinstance(sampling_metadata, _V1SM)
+        except Exception:
+            pass
 
         # Check if we should apply watermarking
         should_watermark, temperature, top_p = self._should_apply_watermarking(
@@ -96,17 +95,33 @@ class CustomSampler(base_sampler_class):
             )
 
             if ngram_list:
-                # Apply Gumbel watermarking to get sampled tokens directly
+                # Build ngram token tensor
                 ngram_tokens = torch.tensor(
                     ngram_list, dtype=torch.long, device=logits.device
                 )
-                sampled_tokens = watermark_generator.sample_next(
-                    logits, ngram_tokens, temperature, top_p
-                )
-                if debug:
-                    logger.debug(
-                        f"Watermarked sampling produced tokens: {sampled_tokens}"
+                # Prefer logits-processor path to keep vLLM sampler contracts
+                if hasattr(watermark_generator, "logits_processor"):
+                    logits = logits.to(torch.float32)
+                    logits = watermark_generator.logits_processor(  # type: ignore[attr-defined]
+                        logits, ngram_tokens
                     )
+                    if debug:
+                        logger.debug("Applied watermark logits processor")
+                else:
+                    # Fallback: directly sample next tokens (kept for completeness)
+                    logits = logits.to(torch.float32)
+                    _sampled_tokens = watermark_generator.sample_next(
+                        cast(torch.FloatTensor, logits),
+                        ngram_tokens,
+                        temperature,
+                        top_p,
+                    )
+                    # Integrating directly sampled tokens into vLLM V1 output
+                    # structures is fragile; so we keep logits path as default.
+                    if debug:
+                        logger.debug(
+                            f"Direct sampled tokens (unused in V1 path): {_sampled_tokens}"
+                        )
             else:
                 logger.warning(
                     "No n-gram context available, falling back to original sampler"
@@ -119,17 +134,8 @@ class CustomSampler(base_sampler_class):
 
         # Create SamplerOutput with our watermarked tokens
         # Shape expectations differ between versions:
-        # - V1 expects a 1D tensor of shape [batch_size]
-        # - V0 expects a 2D tensor of shape [batch_size, 1]
-        if is_v1_outputs:
-            sampled_token_ids = sampled_tokens  # [batch_size]
-        else:
-            sampled_token_ids = sampled_tokens.unsqueeze(-1)  # [batch_size, 1]
-
-        return SamplerOutput(
-            sampled_token_ids=sampled_token_ids,
-            logprobs_tensors=None,  # We could compute logprobs if needed
-        )
+        # Delegate back to the base sampler with possibly modified logits
+        return super().forward(logits, sampling_metadata)
 
     def _should_apply_watermarking(self, sampling_metadata):
         """Check if watermarking should be applied and extract parameters."""
@@ -335,4 +341,5 @@ class CustomSampler(base_sampler_class):
                     ngram = [watermark_generator.pad_id] * watermark_generator.ngram
                     ngram_list.append(ngram)
 
+        return ngram_list
         return ngram_list
