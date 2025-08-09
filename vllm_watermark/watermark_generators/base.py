@@ -50,10 +50,15 @@ class WmGenerator(ABC):
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
             self.rng = torch.Generator(device=self.device)
+            self.rng2 = torch.Generator(device=self.device)
         else:
             self.device = torch.device("cpu")
             self.rng = torch.Generator()
+            self.rng2 = torch.Generator()
         self.rng.manual_seed(self.seed)
+        # Secondary RNG for non-watermark randomness (e.g., multinomial draws)
+        # Seeded once for reproducibility but not reseeded per step
+        self.rng2.manual_seed(self.seed ^ 0x9E3779B1)
 
         # Move hashtable to GPU if available
         self.hashtable = torch.randperm(1000003).to(self.device)

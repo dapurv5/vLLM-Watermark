@@ -95,7 +95,7 @@ class OpenaiGeneratorDoubleRandomization(WmGenerator):
 
                 scores = torch.pow(rs, 1 / probs_sort[ii])
                 sampled_idx_sorted = torch.multinomial(
-                    scores, num_samples=1, generator=self.rng
+                    scores, num_samples=1, generator=self.rng2
                 )
                 sampled_token = torch.gather(
                     probs_idx[ii : ii + 1], -1, sampled_idx_sorted.view(1, 1)
