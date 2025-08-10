@@ -392,4 +392,3 @@ class CustomSampler(base_sampler_class):  # type: ignore[misc, valid-type]
                     ngram_list.append(ngram)
 
         return ngram_list
-        return ngram_list

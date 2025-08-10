@@ -33,10 +33,13 @@ detector = WatermarkDetectors.create(
 )
 
 # Example prompt
-prompts = ["Write a short poem about artificial intelligence"]
+prompts = [
+    "Cluster comprises IBM's Opteron-based eServer 325 server and systems management"
+    + "software and storage devices that can run Linux and Windows operating systems"
+]
 
 # Sampling parameters
-sampling_params = SamplingParams(temperature=0.8, top_p=0.95, max_tokens=64)
+sampling_params = SamplingParams(temperature=1.0, top_p=0.95, max_tokens=64)
 
 # Generate outputs using the watermarked LLM
 outputs = wm_llm.generate(prompts, sampling_params)

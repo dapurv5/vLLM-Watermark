@@ -22,7 +22,6 @@ import time
 from typing import Any, Dict, List, Tuple
 
 import fire
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from tqdm import tqdm
 
 # Set required environment variables
@@ -186,6 +185,68 @@ class WatermarkDatasetProcessor:
 
             sys.exit(1)
 
+    def create_base_llm(
+        self, model_name: str, gpu_memory_utilization: float = 0.8
+    ) -> Any:
+        """Create and return the base vLLM LLM without watermark wrapping."""
+        print("🚀 Initializing base model...")
+        try:
+            print(f"   Loading model: {model_name}")
+            print(f"   GPU memory utilization: {gpu_memory_utilization}")
+            llm = LLM(
+                model=model_name,
+                gpu_memory_utilization=gpu_memory_utilization,
+                max_model_len=2048,
+            )
+            print("✅ Base model initialized")
+            return llm
+        except Exception as e:
+            error_msg = str(e)
+            print(f"❌ Error initializing base model: {error_msg}")
+            if "Free memory" in error_msg and "GPU memory utilization" in error_msg:
+                print("\n💡 GPU Memory Troubleshooting:")
+                print("   This error indicates insufficient GPU memory.")
+                print("   Try the following solutions:")
+                print(
+                    "   1. Use a smaller model (e.g., meta-llama/Llama-3.2-1B-Instruct)"
+                )
+                print("   2. Reduce --gpu_memory_utilization (e.g., 0.6 or 0.4)")
+                print("   3. Close other GPU processes")
+                print("   4. Use CPU-only mode if available")
+                try:
+                    print(
+                        f"   5. Current memory needed: ~{error_msg.split('(')[1].split(')')[0]} GiB"
+                    )
+                except Exception:
+                    pass
+            sys.exit(1)
+
+    def wrap_llm_with_watermark(
+        self,
+        llm: Any,
+        watermarking_algorithm: str,
+        seed: int,
+        ngram: int,
+        detection_threshold: float,
+    ) -> Tuple[Any, Any]:
+        """Wrap an existing base LLM with the watermarking logic and create a detector."""
+        print("🔧 Wrapping base model with watermarking...")
+        watermark_algo = self.get_algorithm_enum(watermarking_algorithm)
+        wm_llm = WatermarkedLLMs.create(
+            llm, algo=watermark_algo, seed=seed, ngram=ngram
+        )
+        detection_algo = self.get_detection_algorithm(watermark_algo)
+        detector = WatermarkDetectors.create(
+            algo=detection_algo,
+            model=llm,
+            ngram=ngram,
+            seed=seed,
+            payload=0,
+            threshold=detection_threshold,
+        )
+        print("✅ Watermark wrapper and detector ready")
+        return wm_llm, detector
+
     def extract_prompts(self, data: List[Dict[str, Any]], input_key: str) -> List[str]:
         """Extract prompts from data for batch processing."""
         prompts = []
@@ -216,105 +277,186 @@ class WatermarkDatasetProcessor:
         """Generate watermarked text for all prompts."""
         print(f"🎯 Generating watermarked text for {len(prompts)} prompts...")
         try:
-            # Add progress bar for generation
-            with tqdm(total=len(prompts), desc="Generating text") as pbar:
+            with tqdm(total=len(prompts), desc="Generating watermarked") as pbar:
                 outputs = wm_llm.generate(prompts, sampling_params)
                 pbar.update(len(prompts))
             return outputs
         except Exception as e:
-            print(f"❌ Error during generation: {e}")
+            print(f"❌ Error during watermarked generation: {e}")
             sys.exit(1)
 
-    def process_outputs(
+    def generate_unwatermarked_text(
+        self, llm: Any, prompts: List[str], sampling_params: SamplingParams
+    ) -> List[Any]:
+        """Generate unwatermarked text for all prompts using base LLM."""
+        print(f"🎯 Generating UN-watermarked text for {len(prompts)} prompts...")
+        try:
+            with tqdm(total=len(prompts), desc="Generating unwatermarked") as pbar:
+                outputs = llm.generate(prompts, sampling_params)
+                pbar.update(len(prompts))
+            return outputs
+        except Exception as e:
+            print(f"❌ Error during unwatermarked generation: {e}")
+            sys.exit(1)
+
+    def generate_watermarked_text_serial(
+        self, wm_llm: Any, prompts: List[str], sampling_params: SamplingParams
+    ) -> Tuple[List[Any], float]:
+        """Generate watermarked text one prompt at a time to avoid batching issues."""
+        print(
+            f"🎯 Generating watermarked text SERIAL for {len(prompts)} prompts (OpenAI workaround)..."
+        )
+        outputs: List[Any] = []
+        total_time: float = 0.0
+        try:
+            with tqdm(
+                total=len(prompts), desc="Generating watermarked (serial)"
+            ) as pbar:
+                for prompt in prompts:
+                    start = time.time()
+                    result = wm_llm.generate([prompt], sampling_params)
+                    total_time += time.time() - start
+                    # result is a list with one RequestOutput
+                    if isinstance(result, list) and len(result) > 0:
+                        outputs.append(result[0])
+                    else:
+                        outputs.append(result)
+                    pbar.update(1)
+            return outputs, total_time
+        except Exception as e:
+            print(f"❌ Error during watermarked serial generation: {e}")
+            sys.exit(1)
+
+    def process_outputs_dual(
         self,
         data: List[Dict[str, Any]],
-        outputs: List[Any],
+        unwm_outputs: List[Any],
+        wm_outputs: List[Any],
         input_key: str,
-        output_key: str,
+        watermarked_output_key: str,
+        unwatermarked_output_key: str,
         tokenizer: Any,
-    ) -> Tuple[List[Dict[str, Any]], int]:
-        """Process outputs and create result data."""
-        processed_data = []
-        total_tokens = 0
-        output_idx = 0
+    ) -> Tuple[List[Dict[str, Any]], int, int, int]:
+        """Process both un/watermarked outputs and create result data.
 
-        print("🔄 Processing outputs...")
+        Returns: (processed_data, total_tokens_overall, total_tokens_unwm, total_tokens_wm)
+        """
+        processed_data = []
+        total_tokens_overall = 0
+        total_tokens_unwm = 0
+        total_tokens_wm = 0
+        unwm_idx = 0
+        wm_idx = 0
+
+        print("🔄 Processing outputs (unwatermarked + watermarked)...")
         for item in tqdm(data, desc="Processing outputs"):
             new_item = item.copy()
 
             if input_key in item and item[input_key]:
-                if output_idx < len(outputs):
-                    output = outputs[output_idx]
-                    generated_text = output.outputs[0].text
-                    new_item[output_key] = generated_text
-
-                    # Count tokens
-                    tokens = self.count_tokens(generated_text, tokenizer)
-                    total_tokens += tokens
-
-                    output_idx += 1
+                # Unwatermarked
+                if unwm_idx < len(unwm_outputs):
+                    unwm_output = unwm_outputs[unwm_idx]
+                    unwm_text = unwm_output.outputs[0].text
+                    new_item[unwatermarked_output_key] = unwm_text
+                    tokens = self.count_tokens(unwm_text, tokenizer)
+                    total_tokens_unwm += tokens
+                    total_tokens_overall += tokens
+                    unwm_idx += 1
                 else:
-                    new_item[output_key] = ""
+                    new_item[unwatermarked_output_key] = ""
+
+                # Watermarked
+                if wm_idx < len(wm_outputs):
+                    wm_output = wm_outputs[wm_idx]
+                    wm_text = wm_output.outputs[0].text
+                    new_item[watermarked_output_key] = wm_text
+                    tokens = self.count_tokens(wm_text, tokenizer)
+                    total_tokens_wm += tokens
+                    total_tokens_overall += tokens
+                    wm_idx += 1
+                else:
+                    new_item[watermarked_output_key] = ""
             else:
-                new_item[output_key] = ""
+                new_item[unwatermarked_output_key] = ""
+                new_item[watermarked_output_key] = ""
 
             processed_data.append(new_item)
 
         print(
-            f"✅ Processed {len(processed_data)} items, generated {total_tokens} tokens"
+            f"✅ Processed {len(processed_data)} items, total tokens (both): {total_tokens_overall}"
         )
-        return processed_data, total_tokens
+        return processed_data, total_tokens_overall, total_tokens_unwm, total_tokens_wm
 
-    def evaluate_detection_performance(
-        self, processed_data: List[Dict[str, Any]], output_key: str, detector: Any
-    ) -> Tuple[List[bool], List[bool], int]:
-        """Evaluate detection performance on watermarked and non-watermarked text."""
-        print("🔍 Evaluating detection performance...")
+    def evaluate_detection_for_texts(
+        self, texts: List[str], is_watermarked: bool, detector: Any
+    ) -> Tuple[List[bool], List[bool]]:
+        """Run detection on a list of texts and return predictions and true labels."""
+        predictions: List[bool] = []
+        true_labels: List[bool] = []
+        desc = "watermarked" if is_watermarked else "unwatermarked"
+        for text in tqdm(texts, desc=f"Testing {desc}"):
+            try:
+                detection_result = detector.detect(text)
+                predictions.append(detection_result["is_watermarked"])
+                true_labels.append(is_watermarked)
+            except Exception as e:
+                print(f"⚠️  Detection failed for {desc} text: {e}")
+                predictions.append(False)
+                true_labels.append(is_watermarked)
+        return predictions, true_labels
 
-        predictions = []
-        true_labels = []
-        watermarked_count = 0
+    def evaluate_detection_performance_dual(
+        self,
+        processed_data: List[Dict[str, Any]],
+        watermarked_key: str,
+        unwatermarked_key: str,
+        detector: Any,
+    ) -> Tuple[List[bool], List[bool], int, int]:
+        """Evaluate detection on both watermarked and unwatermarked texts from processed data."""
+        print("🔍 Evaluating detection performance (both sets)...")
 
-        # Test watermarked texts
+        predictions: List[bool] = []
+        true_labels: List[bool] = []
+
         watermarked_texts = [
-            item[output_key]
+            item[watermarked_key]
             for item in processed_data
-            if output_key in item and item[output_key]
+            if watermarked_key in item and item[watermarked_key]
         ]
-        watermarked_count = len(watermarked_texts)
+        unwatermarked_texts = [
+            item[unwatermarked_key]
+            for item in processed_data
+            if unwatermarked_key in item and item[unwatermarked_key]
+        ]
 
-        print(f"   Testing {watermarked_count} watermarked texts...")
+        print(f"   Testing {len(watermarked_texts)} watermarked texts...")
         for text in tqdm(watermarked_texts, desc="Testing watermarked"):
             try:
                 detection_result = detector.detect(text)
                 predictions.append(detection_result["is_watermarked"])
-                true_labels.append(True)  # All generated texts should be watermarked
+                true_labels.append(True)
             except Exception as e:
                 print(f"⚠️  Detection failed for watermarked text: {e}")
                 predictions.append(False)
                 true_labels.append(True)
 
-        # Test with non-watermarked text for false positive rate
-        non_watermarked_samples = [
-            "This is a test sentence that was not generated with watermarking.",
-            "Another example of non-watermarked text for testing purposes.",
-            "Random text without any watermarking applied to it.",
-            "Plain text that should not be detected as watermarked.",
-            "Simple sentence for baseline comparison testing.",
-        ]
-
-        print(f"   Testing {len(non_watermarked_samples)} non-watermarked texts...")
-        for text in tqdm(non_watermarked_samples, desc="Testing non-watermarked"):
+        print(f"   Testing {len(unwatermarked_texts)} unwatermarked texts...")
+        for text in tqdm(unwatermarked_texts, desc="Testing unwatermarked"):
             try:
                 detection_result = detector.detect(text)
                 predictions.append(detection_result["is_watermarked"])
-                true_labels.append(False)  # These should not be detected as watermarked
+                true_labels.append(False)
             except Exception as e:
-                print(f"⚠️  Detection failed for non-watermarked text: {e}")
+                print(f"⚠️  Detection failed for unwatermarked text: {e}")
                 predictions.append(False)
                 true_labels.append(False)
 
-        return predictions, true_labels, watermarked_count
+        return (
+            predictions,
+            true_labels,
+            len(watermarked_texts),
+            len(unwatermarked_texts),
+        )
 
     def calculate_metrics(
         self,
@@ -325,25 +467,35 @@ class WatermarkDatasetProcessor:
         total_tokens: int,
         num_prompts: int,
     ) -> Dict[str, float | int]:
-        """Calculate and return all performance metrics."""
+        """Calculate performance metrics including FPR/FNR."""
         total_time = generation_time + detection_time
         avg_time_per_example = generation_time / num_prompts if num_prompts > 0 else 0
         tokens_per_second = total_tokens / generation_time if generation_time > 0 else 0
 
-        # Detection metrics
-        if len(predictions) > 0 and len(set(true_labels)) > 1:  # Need both classes
-            try:
-                accuracy = float(accuracy_score(true_labels, predictions))
-                f1 = float(f1_score(true_labels, predictions))
-                precision = float(
-                    precision_score(true_labels, predictions, zero_division=0)
-                )
-                recall = float(recall_score(true_labels, predictions, zero_division=0))
-            except Exception as e:
-                print(f"⚠️  Error calculating metrics: {e}")
-                accuracy = f1 = precision = recall = 0.0
-        else:
-            accuracy = f1 = precision = recall = 0.0
+        tp = fp = tn = fn = 0
+        if len(predictions) == len(true_labels) and len(predictions) > 0:
+            for pred, true in zip(predictions, true_labels):
+                if pred and true:
+                    tp += 1
+                elif pred and not true:
+                    fp += 1
+                elif not pred and not true:
+                    tn += 1
+                elif not pred and true:
+                    fn += 1
+
+        precision = float(tp / (tp + fp)) if (tp + fp) > 0 else 0.0
+        recall = float(tp / (tp + fn)) if (tp + fn) > 0 else 0.0
+        f1 = (
+            float(2 * precision * recall / (precision + recall))
+            if (precision + recall) > 0
+            else 0.0
+        )
+        accuracy = (
+            float((tp + tn) / (tp + tn + fp + fn)) if (tp + tn + fp + fn) > 0 else 0.0
+        )
+        fpr = float(fp / (fp + tn)) if (fp + tn) > 0 else 0.0
+        fnr = float(fn / (tp + fn)) if (tp + fn) > 0 else 0.0
 
         return {
             "total_time": total_time,
@@ -356,6 +508,12 @@ class WatermarkDatasetProcessor:
             "f1_score": f1,
             "precision": precision,
             "recall": recall,
+            "fpr": fpr,
+            "fnr": fnr,
+            "tp": tp,
+            "fp": fp,
+            "tn": tn,
+            "fn": fn,
         }
 
     def print_metrics(
@@ -363,7 +521,7 @@ class WatermarkDatasetProcessor:
         metrics: Dict[str, float],
         num_prompts: int,
         num_watermarked: int,
-        num_non_watermarked: int,
+        num_unwatermarked: int,
         output_path: str,
         watermarking_algorithm: str,
         model_name: str,
@@ -389,8 +547,13 @@ class WatermarkDatasetProcessor:
         print(f"📊 Detection F1 score: {metrics['f1_score']:.4f}")
         print(f"✨ Detection precision: {metrics['precision']:.4f}")
         print(f"🔄 Detection recall: {metrics['recall']:.4f}")
+        print(f"🚫 False Positive Rate (FPR): {metrics['fpr']:.4f}")
+        print(f"⚠️  False Negative Rate (FNR): {metrics['fnr']:.4f}")
+        print(
+            f"   TP: {int(metrics['tp'])}  FP: {int(metrics['fp'])}  TN: {int(metrics['tn'])}  FN: {int(metrics['fn'])}"
+        )
         print(f"✅ Watermarked samples tested: {num_watermarked}")
-        print(f"❌ Non-watermarked samples tested: {num_non_watermarked}")
+        print(f"🧪 Unwatermarked samples tested: {num_unwatermarked}")
 
         print("\n" + "=" * 60)
         print("📋 SUMMARY")
@@ -407,11 +570,12 @@ class WatermarkDatasetProcessor:
         input_key: str,
         output_path: str,
         output_key: str,
+        unwatermarked_output_key: str = "unwatermarked_text",
         watermarking_algorithm: str = "OPENAI",
         model_name: str = "meta-llama/Llama-3.2-1B",
         seed: int = 42,
         ngram: int = 2,
-        max_tokens: int = 64,
+        max_tokens: int = 128,
         temperature: float = 0.8,
         top_p: float = 0.95,
         detection_threshold: float = 0.05,
@@ -442,7 +606,8 @@ class WatermarkDatasetProcessor:
         print(f"📁 Input file: {input_path}")
         print(f"🔑 Input key: {input_key}")
         print(f"💾 Output file: {output_path}")
-        print(f"🏷️  Output key: {output_key}")
+        print(f"🏷️  Watermarked output key: {output_key}")
+        print(f"🏷️  Unwatermarked output key: {unwatermarked_output_key}")
         print(f"🔧 Algorithm: {watermarking_algorithm}")
         print(f"🤖 Model: {model_name}")
         print(f"🎲 Seed: {seed}")
@@ -459,14 +624,10 @@ class WatermarkDatasetProcessor:
         # Load and validate data
         data = self.load_and_validate_data(input_path, input_key, max_examples)
 
-        # Initialize models
-        llm, wm_llm, detector = self.initialize_models(
-            model_name,
-            watermarking_algorithm,
-            seed,
-            ngram,
-            detection_threshold,
-            gpu_memory_utilization,
+        # Create base LLM ONLY (do NOT wrap yet)
+        llm = self.create_base_llm(
+            model_name=model_name,
+            gpu_memory_utilization=gpu_memory_utilization,
         )
 
         # Get tokenizer for token counting
@@ -480,14 +641,42 @@ class WatermarkDatasetProcessor:
         # Extract prompts
         prompts = self.extract_prompts(data, input_key)
 
-        # Generate watermarked text
-        start_time = time.time()
-        outputs = self.generate_watermarked_text(wm_llm, prompts, sampling_params)
-        generation_time = time.time() - start_time
+        # Generate UNWATERMARKED text first (as requested)
+        unwm_start_time = time.time()
+        unwm_outputs = self.generate_unwatermarked_text(llm, prompts, sampling_params)
+        unwm_generation_time = time.time() - unwm_start_time
+
+        # Then wrap the base LLM and generate WATERMARKED text
+        wm_llm, detector = self.wrap_llm_with_watermark(
+            llm=llm,
+            watermarking_algorithm=watermarking_algorithm,
+            seed=seed,
+            ngram=ngram,
+            detection_threshold=detection_threshold,
+        )
+        # OpenAI-style watermarking has batching alignment issues; generate serially
+        if watermarking_algorithm.upper() in {"OPENAI", "OPENAI_DR"}:
+            wm_outputs, wm_generation_time = self.generate_watermarked_text_serial(
+                wm_llm, prompts, sampling_params
+            )
+        else:
+            wm_start_time = time.time()
+            wm_outputs = self.generate_watermarked_text(
+                wm_llm, prompts, sampling_params
+            )
+            wm_generation_time = time.time() - wm_start_time
 
         # Process outputs
-        processed_data, total_tokens = self.process_outputs(
-            data, outputs, input_key, output_key, tokenizer
+        processed_data, total_tokens, total_tokens_unwm, total_tokens_wm = (
+            self.process_outputs_dual(
+                data,
+                unwm_outputs,
+                wm_outputs,
+                input_key,
+                output_key,
+                unwatermarked_output_key,
+                tokenizer,
+            )
         )
 
         # Save processed data
@@ -498,36 +687,94 @@ class WatermarkDatasetProcessor:
             print(f"❌ Error saving output file: {e}")
             sys.exit(1)
 
-        # Evaluate detection performance
-        detection_start_time = time.time()
-        predictions, true_labels, num_watermarked = self.evaluate_detection_performance(
-            processed_data, output_key, detector
-        )
-        detection_time = time.time() - detection_start_time
+        # Prepare text sets for separate evaluation
+        watermarked_texts = [
+            item[output_key]
+            for item in processed_data
+            if output_key in item and item[output_key]
+        ]
+        unwatermarked_texts = [
+            item[unwatermarked_output_key]
+            for item in processed_data
+            if unwatermarked_output_key in item and item[unwatermarked_output_key]
+        ]
 
-        # Calculate metrics
-        metrics = self.calculate_metrics(
-            predictions,
-            true_labels,
-            generation_time,
-            detection_time,
-            total_tokens,
-            len(prompts),
+        # Evaluate detection performance separately
+        wm_detection_start = time.time()
+        preds_wm, labels_wm = self.evaluate_detection_for_texts(
+            watermarked_texts, True, detector
+        )
+        wm_detection_time = time.time() - wm_detection_start
+
+        unwm_detection_start = time.time()
+        preds_unwm, labels_unwm = self.evaluate_detection_for_texts(
+            unwatermarked_texts, False, detector
+        )
+        unwm_detection_time = time.time() - unwm_detection_start
+
+        # Calculate metrics separately
+        metrics_wm = self.calculate_metrics(
+            preds_wm,
+            labels_wm,
+            wm_generation_time,
+            wm_detection_time,
+            total_tokens_wm,
+            len(watermarked_texts),
+        )
+        metrics_unwm = self.calculate_metrics(
+            preds_unwm,
+            labels_unwm,
+            unwm_generation_time,
+            unwm_detection_time,
+            total_tokens_unwm,
+            len(unwatermarked_texts),
         )
 
-        # Count samples for reporting
-        num_non_watermarked = 5  # Fixed number of non-watermarked test samples
-
-        # Print metrics
-        self.print_metrics(
-            metrics,
-            len(prompts),
-            num_watermarked,
-            num_non_watermarked,
-            output_path,
-            watermarking_algorithm,
-            model_name,
+        # Print metrics separately
+        print("\n" + "=" * 60)
+        print("📊 PERFORMANCE METRICS (SEPARATE)")
+        print("=" * 60)
+        print("UNWATERMARKED:")
+        print(
+            f"  ⏱️  Gen time: {metrics_unwm['generation_time']:.2f}s  🔍 Det time: {metrics_unwm['detection_time']:.2f}s"
         )
+        print(
+            f"  🎯 Tokens: {int(metrics_unwm['total_tokens'])}  🚀 TPS: {metrics_unwm['tokens_per_second']:.2f}"
+        )
+        print("WATERMARKED:")
+        print(
+            f"  ⏱️  Gen time: {metrics_wm['generation_time']:.2f}s  🔍 Det time: {metrics_wm['detection_time']:.2f}s"
+        )
+        print(
+            f"  🎯 Tokens: {int(metrics_wm['total_tokens'])}  🚀 TPS: {metrics_wm['tokens_per_second']:.2f}"
+        )
+
+        print("\n" + "=" * 60)
+        print("🔍 DETECTION METRICS (SEPARATE)")
+        print("=" * 60)
+        print("UNWATERMARKED (should be False):")
+        print(
+            f"  Acc: {metrics_unwm['accuracy']:.4f}  F1: {metrics_unwm['f1_score']:.4f}  Pre: {metrics_unwm['precision']:.4f}  Rec: {metrics_unwm['recall']:.4f}  FPR: {metrics_unwm['fpr']:.4f}  FNR: {metrics_unwm['fnr']:.4f}"
+        )
+        print(
+            f"  TP: {int(metrics_unwm['tp'])}  FP: {int(metrics_unwm['fp'])}  TN: {int(metrics_unwm['tn'])}  FN: {int(metrics_unwm['fn'])}  N: {len(unwatermarked_texts)}"
+        )
+        print("WATERMARKED (should be True):")
+        print(
+            f"  Acc: {metrics_wm['accuracy']:.4f}  F1: {metrics_wm['f1_score']:.4f}  Pre: {metrics_wm['precision']:.4f}  Rec: {metrics_wm['recall']:.4f}  FPR: {metrics_wm['fpr']:.4f}  FNR: {metrics_wm['fnr']:.4f}"
+        )
+        print(
+            f"  TP: {int(metrics_wm['tp'])}  FP: {int(metrics_wm['fp'])}  TN: {int(metrics_wm['tn'])}  FN: {int(metrics_wm['fn'])}  N: {len(watermarked_texts)}"
+        )
+
+        print("\n" + "=" * 60)
+        print("📋 SUMMARY")
+        print("=" * 60)
+        print(f"✅ Successfully processed {len(prompts)} examples")
+        print(f"💾 Output saved to: {output_path}")
+        print(f"🔧 Watermarking algorithm: {watermarking_algorithm}")
+        print(f"🤖 Model: {model_name}")
+        print("=" * 60)
 
 
 def main():
