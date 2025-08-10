@@ -377,6 +377,9 @@ class WatermarkedLLM:
         if self.debug:
             logger.debug("WatermarkedLLM.generate called")
 
+        # Never forward progress_callback to vLLM; only used by serial wrapper
+        progress_callback = kwargs.pop("progress_callback", None)
+
         if self.logit_processor is not None:
             # Check if we're using V1 engine, which doesn't support logits processors
             if self._is_v1_engine():
@@ -423,7 +426,6 @@ class WatermarkedLLM:
                 and isinstance(prompts, list)
                 and len(prompts) > 1
             ):
-                progress_callback = kwargs.pop("progress_callback", None)
                 aggregated_outputs = []
                 # Always suppress library output; we'll temporarily restore stdio for the callback
                 with self._quiet_serial_logs(preserve_stdio=False):

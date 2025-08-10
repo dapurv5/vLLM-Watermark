@@ -278,12 +278,15 @@ class WatermarkDatasetProcessor:
         print(f"🎯 Generating watermarked text for {len(prompts)} prompts...")
         try:
             with tqdm(total=len(prompts), desc="Generating watermarked") as pbar:
-                # Pass a callback so core can update this bar per prompt during serial generation
+                # Let core consume progress_callback for serial case; otherwise we'll top-up after
                 outputs = wm_llm.generate(
                     prompts,
                     sampling_params,
                     progress_callback=pbar.update,
                 )
+                # In batched case, no per-prompt updates happened; complete the bar
+                if isinstance(outputs, list) and len(outputs) == 1 and len(prompts) > 1:
+                    pbar.update(len(prompts))
             return outputs
         except Exception as e:
             print(f"❌ Error during watermarked generation: {e}")
