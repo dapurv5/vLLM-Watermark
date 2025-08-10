@@ -41,6 +41,8 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import fire
+import numpy as np
+import torch
 from tqdm import tqdm
 
 # Environment adjustments consistent with the other script
@@ -226,6 +228,8 @@ class WatermarkPairsProcessor:
         watermarking_algorithm: str,
         seed: int,
         ngram: int,
+        delta: float,
+        gamma: float,
         detection_threshold: float,
     ) -> Tuple[Any, Any]:
         """Wrap an existing base LLM with watermarking and create a detector.
@@ -236,15 +240,13 @@ class WatermarkPairsProcessor:
         watermark_algo = self.get_algorithm_enum(watermarking_algorithm)
 
         # Fixed defaults for watermark generator; adjust here in code if needed later
-        DEFAULT_DELTA = 2.0
-        DEFAULT_GAMMA = 0.25
         wm_llm = WatermarkedLLMs.create(
             llm,
             algo=watermark_algo,
             seed=seed,
             ngram=ngram,
-            delta=DEFAULT_DELTA,
-            gamma=DEFAULT_GAMMA,
+            delta=delta,
+            gamma=gamma,
         )
 
         detection_algo = self.get_detection_algorithm(watermark_algo)
@@ -337,6 +339,8 @@ class WatermarkPairsProcessor:
         model_name: str = "meta-llama/Llama-3.2-1B",
         seed: int = 42,
         ngram: int = 2,
+        delta: float = 2.0,
+        gamma: float = 0.25,
         max_tokens: int = 64,
         temperature: float = 0.8,
         top_p: float = 0.95,
@@ -353,6 +357,8 @@ class WatermarkPairsProcessor:
         dataset_start_row: int | None = None,
         dataset_end_row: int | None = None,
     ):
+        seed_everything(seed)
+
         print("🌊 WM + UNWM GENERATION")
         print("=" * 60)
         print(f"📁 Input file: {input_path}")
@@ -423,6 +429,8 @@ class WatermarkPairsProcessor:
             watermarking_algorithm=watermarking_algorithm,
             seed=seed,
             ngram=ngram,
+            delta=delta,
+            gamma=gamma,
             detection_threshold=detection_threshold,
         )
         print("🎯 Generating watermarked text...")
@@ -549,6 +557,16 @@ class WatermarkPairsProcessor:
         print(f"Watermarked generation time: {gen_wm_time:.2f}s")
         print(f"Unwatermarked generation time: {gen_unwm_time:.2f}s")
         print("=" * 60)
+
+
+def seed_everything(seed: int):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def main():

@@ -25,6 +25,7 @@ class WatermarkDetectors:
         # Algorithm-specific parameters
         payload: int = 0,  # For OpenAI
         gamma: float = 0.5,  # For Maryland
+        delta: float = 1.0,  # For Maryland
         **kwargs,
     ):
         """Create a watermark detector with automatic configuration.
@@ -41,6 +42,7 @@ class WatermarkDetectors:
             threshold: Detection threshold for p-values
             payload: Payload for OpenAI detectors
             gamma: Gamma parameter for Maryland detectors
+            delta: Delta parameter for Maryland detectors
             **kwargs: Additional algorithm-specific parameters
 
         Returns:
@@ -126,6 +128,7 @@ class WatermarkDetectors:
                 seeding=seeding,
                 salt_key=salt_key,
                 gamma=gamma,
+                delta=delta,
                 threshold=threshold,
                 **kwargs,
             )
@@ -140,6 +143,7 @@ class WatermarkDetectors:
                 seeding=seeding,
                 salt_key=salt_key,
                 gamma=gamma,
+                delta=delta,
                 threshold=threshold,
                 **kwargs,
             )

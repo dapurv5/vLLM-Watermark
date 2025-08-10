@@ -11,6 +11,8 @@ python scripts/generate_wm_and_unwm.py \
   --model_name "meta-llama/Llama-3.2-1B" \
   --seed 42 \
   --ngram 4 \
+  --delta 2.0 \
+  --gamma 0.25 \
   --detection_threshold 0.05 \
   --temperature 0.8 \
   --max_tokens 128 \

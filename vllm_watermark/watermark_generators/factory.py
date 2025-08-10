@@ -25,6 +25,7 @@ class WatermarkGenerators:
         # Algorithm-specific parameters
         payload: int = 0,  # For OpenAI
         gamma: float = 0.5,  # For Maryland
+        delta: float = 1.0,  # For Maryland
         **kwargs,
     ):
         """Create a watermark generator with automatic configuration.
@@ -40,6 +41,7 @@ class WatermarkGenerators:
             salt_key: Salt key for hashing
             payload: Payload for OpenAI generators
             gamma: Gamma parameter for Maryland generators
+            delta: Delta parameter for Maryland generators
             **kwargs: Additional algorithm-specific parameters
 
         Returns:
@@ -113,6 +115,7 @@ class WatermarkGenerators:
                 seeding=seeding,
                 salt_key=salt_key,
                 gamma=gamma,
+                delta=delta,
                 **kwargs,
             )
         elif algo == WatermarkingAlgorithm.MARYLAND_L:
@@ -125,6 +128,7 @@ class WatermarkGenerators:
             return MarylandLogitProcessor(
                 vocab_size=vocab_size,
                 gamma=gamma,
+                delta=delta,
                 ngram=ngram,
                 seed=seed,
                 salt_key=salt_key,
