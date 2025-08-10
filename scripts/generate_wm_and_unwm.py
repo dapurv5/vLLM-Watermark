@@ -144,6 +144,7 @@ class WatermarkPairsProcessor:
     def get_algorithm_enum(self, algo_str: str) -> WatermarkingAlgorithm:
         algo_map = {
             "OPENAI": WatermarkingAlgorithm.OPENAI,
+            "OPENAI_DR": WatermarkingAlgorithm.OPENAI_DR,
             "MARYLAND": WatermarkingAlgorithm.MARYLAND,
             "PF": WatermarkingAlgorithm.PF,
         }
@@ -156,6 +157,7 @@ class WatermarkPairsProcessor:
     ) -> DetectionAlgorithm:
         detection_map = {
             WatermarkingAlgorithm.OPENAI: DetectionAlgorithm.OPENAI_Z,
+            WatermarkingAlgorithm.OPENAI_DR: DetectionAlgorithm.OPENAI_Z,
             WatermarkingAlgorithm.MARYLAND: DetectionAlgorithm.MARYLAND_Z,
             WatermarkingAlgorithm.PF: DetectionAlgorithm.PF,
         }

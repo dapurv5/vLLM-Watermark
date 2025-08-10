@@ -70,6 +70,7 @@ class WatermarkDatasetProcessor:
         """Convert string to WatermarkingAlgorithm enum."""
         algo_map = {
             "OPENAI": WatermarkingAlgorithm.OPENAI,
+            "OPENAI_DR": WatermarkingAlgorithm.OPENAI_DR,
             "MARYLAND": WatermarkingAlgorithm.MARYLAND,
             "PF": WatermarkingAlgorithm.PF,
         }
@@ -83,6 +84,7 @@ class WatermarkDatasetProcessor:
         """Get corresponding detection algorithm."""
         detection_map = {
             WatermarkingAlgorithm.OPENAI: DetectionAlgorithm.OPENAI_Z,
+            WatermarkingAlgorithm.OPENAI_DR: DetectionAlgorithm.OPENAI_Z,
             WatermarkingAlgorithm.MARYLAND: DetectionAlgorithm.MARYLAND_Z,
             WatermarkingAlgorithm.PF: DetectionAlgorithm.PF,
         }
@@ -756,4 +758,5 @@ def main():
 
 
 if __name__ == "__main__":
+    main()
     main()
