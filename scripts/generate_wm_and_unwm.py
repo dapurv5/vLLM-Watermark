@@ -38,7 +38,7 @@ import os
 import random
 import sys
 import time
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import fire
 from tqdm import tqdm
@@ -72,6 +72,66 @@ class WatermarkPairsProcessor:
                     data.append(json.loads(line))
         return data
 
+    def load_hf_dataset(
+        self, dataset_name: str, split: str = "train", subset_name: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Load a HuggingFace dataset and return a list of dicts.
+
+        Examples:
+          - dataset_name="c4", subset_name="en", split="train"
+          - dataset_name="allenai/c4", subset_name="en", split="train[:1000]"
+        """
+        try:
+            from datasets import load_dataset  # type: ignore
+        except Exception as e:
+            print(
+                f"❌ datasets library not available to load HF dataset '{dataset_name}': {e}"
+            )
+            sys.exit(1)
+
+        print(
+            f"Loading HuggingFace dataset {dataset_name}"
+            + (f"/{subset_name}" if subset_name else "")
+            + f" split={split}..."
+        )
+        try:
+            ds = load_dataset(dataset_name, subset_name, split=split)
+        except Exception as e:
+            print(f"❌ Failed to load dataset: {e}")
+            sys.exit(1)
+
+        # Convert to list of dicts
+        records: List[Dict[str, Any]] = [dict(r) for r in ds]
+        print(f"✅ Loaded {len(records)} rows from HF dataset")
+        return records
+
+    def load_data_generic(
+        self,
+        input_path: str,
+        input_key: str,
+        max_examples: Optional[int] = None,
+        hf_split: str = "train",
+        hf_name: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """Load data from JSONL file or HuggingFace dataset based on path existence."""
+        if os.path.exists(input_path):
+            data = self.load_jsonl(input_path)
+        else:
+            data = self.load_hf_dataset(
+                dataset_name=input_path, split=hf_split, subset_name=hf_name
+            )
+
+        if max_examples is not None:
+            data = data[:max_examples]
+            print(f"📊 Processing first {len(data)} examples")
+
+        if not data or input_key not in data[0]:
+            print(f"❌ Error: Key '{input_key}' not found in input data")
+            print(f"   Available keys: {list(data[0].keys()) if data else 'No data'}")
+            sys.exit(1)
+
+        return data
+
     def save_jsonl(self, data: List[Dict[str, Any]], file_path: str) -> None:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         print(f"Saving data to {file_path}...")
@@ -100,69 +160,48 @@ class WatermarkPairsProcessor:
         return detection_map[watermark_algo]
 
     def load_and_validate_data(
-        self, input_path: str, input_key: str, max_examples: int | None = None
+        self,
+        input_path: str,
+        input_key: str,
+        max_examples: Optional[int] | None = None,
+        hf_split: str = "train",
+        hf_name: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         try:
-            data = self.load_jsonl(input_path)
+            data = self.load_data_generic(
+                input_path=input_path,
+                input_key=input_key,
+                max_examples=max_examples,
+                hf_split=hf_split,
+                hf_name=hf_name,
+            )
             print(f"✅ Loaded {len(data)} examples")
+        except SystemExit:
+            raise
         except Exception as e:
-            print(f"❌ Error loading input file: {e}")
-            sys.exit(1)
-
-        if max_examples is not None:
-            data = data[:max_examples]
-            print(f"📊 Processing first {len(data)} examples")
-
-        if not data or input_key not in data[0]:
-            print(f"❌ Error: Key '{input_key}' not found in input data")
-            print(f"   Available keys: {list(data[0].keys()) if data else 'No data'}")
+            print(f"❌ Error loading input: {e}")
             sys.exit(1)
 
         return data
 
-    def initialize_models(
-        self,
-        model_name: str,
-        watermarking_algorithm: str,
-        seed: int,
-        ngram: int,
-        detection_threshold: float,
-        gpu_memory_utilization: float = 0.8,
-    ) -> Tuple[Any, Any, Any]:
-        print("🚀 Initializing model and watermarking...")
+    def create_base_llm(
+        self, model_name: str, gpu_memory_utilization: float = 0.8
+    ) -> Any:
+        """Create and return the base vLLM LLM without watermark wrapping."""
+        print("🚀 Initializing base model...")
         try:
             print(f"   Loading model: {model_name}")
             print(f"   GPU memory utilization: {gpu_memory_utilization}")
-
             llm = LLM(
                 model=model_name,
                 gpu_memory_utilization=gpu_memory_utilization,
                 max_model_len=2048,
             )
-
-            watermark_algo = self.get_algorithm_enum(watermarking_algorithm)
-            print(f"   Watermarking algorithm: {watermarking_algorithm}")
-
-            wm_llm = WatermarkedLLMs.create(
-                llm, algo=watermark_algo, seed=seed, ngram=ngram
-            )
-
-            detection_algo = self.get_detection_algorithm(watermark_algo)
-            detector = WatermarkDetectors.create(
-                algo=detection_algo,
-                model=llm,
-                ngram=ngram,
-                seed=seed,
-                payload=0,
-                threshold=detection_threshold,
-            )
-
-            print("✅ Model and watermarking initialized successfully")
-            return llm, wm_llm, detector
-
+            print("✅ Base model initialized")
+            return llm
         except Exception as e:
             error_msg = str(e)
-            print(f"❌ Error initializing model: {error_msg}")
+            print(f"❌ Error initializing base model: {error_msg}")
             if "Free memory" in error_msg and "GPU memory utilization" in error_msg:
                 print("\n💡 GPU Memory Troubleshooting:")
                 print("   This error indicates insufficient GPU memory.")
@@ -180,6 +219,45 @@ class WatermarkPairsProcessor:
                 except Exception:
                     pass
             sys.exit(1)
+
+    def wrap_llm_with_watermark(
+        self,
+        llm: Any,
+        watermarking_algorithm: str,
+        seed: int,
+        ngram: int,
+        detection_threshold: float,
+    ) -> Tuple[Any, Any]:
+        """Wrap an existing base LLM with watermarking and create a detector.
+
+        Watermark parameters are intentionally kept internal to simplify the CLI.
+        """
+        print("🔧 Wrapping base model with watermarking...")
+        watermark_algo = self.get_algorithm_enum(watermarking_algorithm)
+
+        # Fixed defaults for watermark generator; adjust here in code if needed later
+        DEFAULT_DELTA = 2.0
+        DEFAULT_GAMMA = 0.25
+        wm_llm = WatermarkedLLMs.create(
+            llm,
+            algo=watermark_algo,
+            seed=seed,
+            ngram=ngram,
+            delta=DEFAULT_DELTA,
+            gamma=DEFAULT_GAMMA,
+        )
+
+        detection_algo = self.get_detection_algorithm(watermark_algo)
+        detector = WatermarkDetectors.create(
+            algo=detection_algo,
+            model=llm,
+            ngram=ngram,
+            seed=seed,
+            payload=0,
+            threshold=detection_threshold,
+        )
+        print("✅ Watermark wrapper and detector ready")
+        return wm_llm, detector
 
     def extract_prompts(self, data: List[Dict[str, Any]], input_key: str) -> List[str]:
         prompts: List[str] = []
@@ -254,7 +332,7 @@ class WatermarkPairsProcessor:
         input_path: str,
         input_key: str,
         output_path: str,
-        output_key: str,  # accepted for CLI compatibility; not required by this script
+        output_key: str = "watermarked_text",
         watermarking_algorithm: str = "OPENAI",
         model_name: str = "meta-llama/Llama-3.2-1B",
         seed: int = 42,
@@ -264,16 +342,22 @@ class WatermarkPairsProcessor:
         top_p: float = 0.95,
         detection_threshold: float = 0.05,
         max_examples: int | None = None,
-        gpu_memory_utilization: float = 0.8,
+        # gpu_memory_utilization removed from CLI; use default in creator
         num_wm_generations_per_prompt: int = 1,
         num_unwm_generations_per_prompt: int = 1,
+        # New/extended options
+        hf_split: str = "train",
+        hf_name: str | None = None,
+        # beam size removed; use num_*_generations_per_prompt to control n
+        batch_size: int | None = None,
+        dataset_start_row: int | None = None,
+        dataset_end_row: int | None = None,
     ):
         print("🌊 WM + UNWM GENERATION")
         print("=" * 60)
         print(f"📁 Input file: {input_path}")
         print(f"🔑 Input key: {input_key}")
         print(f"💾 Output file: {output_path}")
-        print(f"🏷️  Output key (ignored): {output_key}")
         print(f"🔧 Algorithm: {watermarking_algorithm}")
         print(f"🤖 Model: {model_name}")
         print(f"🎲 Seed: {seed}")
@@ -282,53 +366,76 @@ class WatermarkPairsProcessor:
         print(f"🌡️  Temperature: {temperature}")
         print(f"🎯 Top-p: {top_p}")
         print(f"🚨 Detection threshold: {detection_threshold}")
-        print(f"🎮 GPU memory utilization: {gpu_memory_utilization}")
         print(f"🔁 num_wm_generations_per_prompt: {num_wm_generations_per_prompt}")
         print(f"🔁 num_unwm_generations_per_prompt: {num_unwm_generations_per_prompt}")
         if max_examples:
             print(f"📊 Max examples: {max_examples}")
         print("=" * 60)
 
-        data = self.load_and_validate_data(input_path, input_key, max_examples)
-
-        llm, wm_llm, detector = self.initialize_models(
-            model_name,
-            watermarking_algorithm,
-            seed,
-            ngram,
-            detection_threshold,
-            gpu_memory_utilization,
+        data = self.load_and_validate_data(
+            input_path, input_key, max_examples, hf_split=hf_split, hf_name=hf_name
         )
 
-        prompts = self.extract_prompts(data, input_key)
+        # Create base LLM first; use it to generate UNWATERMARKED outputs
+        llm = self.create_base_llm(model_name)
 
-        # Build sampling params for each generator
+        prompts = self.extract_prompts(data, input_key)
+        # Apply dataset slicing if requested
+        if dataset_start_row is not None or dataset_end_row is not None:
+            start = dataset_start_row or 0
+            end = dataset_end_row or len(prompts)
+            prompts = prompts[start:end]
+            data = data[start:end]
+
+        # Build sampling params (simple and clear). Beam size simply maps to n if > 1
+        wm_n = max(1, int(num_wm_generations_per_prompt))
+        unwm_n = max(1, int(num_unwm_generations_per_prompt))
+        wm_return_n = wm_n
+        unwm_return_n = unwm_n
+
         sampling_wm = SamplingParams(
             temperature=temperature,
             top_p=top_p,
             max_tokens=max_tokens,
             seed=seed,
-            n=max(1, int(num_wm_generations_per_prompt)),
+            n=wm_return_n,
         )
         sampling_unwm = SamplingParams(
             temperature=temperature,
             top_p=top_p,
             max_tokens=max_tokens,
             seed=seed,
-            n=max(1, int(num_unwm_generations_per_prompt)),
+            n=unwm_return_n,
         )
 
-        # Generate watermarked
-        print("🎯 Generating watermarked text...")
-        gen_wm_start = time.time()
-        wm_outputs = wm_llm.generate(prompts, sampling_wm)
-        gen_wm_time = time.time() - gen_wm_start
-
-        # Generate unwatermarked
+        # Generate UNWATERMARKED first
         print("🎯 Generating unwatermarked text...")
         gen_unwm_start = time.time()
-        unwm_outputs = llm.generate(prompts, sampling_params=sampling_unwm)
+        with tqdm(total=len(prompts), desc="Generating unwatermarked") as pbar:
+            unwm_outputs = llm.generate(prompts, sampling_params=sampling_unwm)
+            if pbar.n < pbar.total:
+                pbar.update(pbar.total - pbar.n)
         gen_unwm_time = time.time() - gen_unwm_start
+
+        # Then wrap the base LLM and generate WATERMARKED
+        wm_llm, detector = self.wrap_llm_with_watermark(
+            llm=llm,
+            watermarking_algorithm=watermarking_algorithm,
+            seed=seed,
+            ngram=ngram,
+            detection_threshold=detection_threshold,
+        )
+        print("🎯 Generating watermarked text...")
+        gen_wm_start = time.time()
+        with tqdm(total=len(prompts), desc="Generating watermarked") as pbar:
+            wm_outputs = wm_llm.generate(
+                prompts,
+                sampling_wm,
+                progress_callback=pbar.update,
+            )
+            if pbar.n < pbar.total:
+                pbar.update(pbar.total - pbar.n)
+        gen_wm_time = time.time() - gen_wm_start
 
         wm_texts = self._collect_texts(wm_outputs)
         unwm_texts = self._collect_texts(unwm_outputs)
