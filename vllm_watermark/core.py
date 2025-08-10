@@ -1,3 +1,7 @@
+import logging
+import os
+import sys
+from contextlib import contextmanager
 from enum import Enum
 from typing import Optional, Union
 
@@ -103,11 +107,21 @@ class WatermarkedLLM:
         sampler: Optional[Union[Sampler, V1Sampler]] = None,
         logit_processor=None,
         debug: bool = False,
+        algo: Optional[WatermarkingAlgorithm] = None,
+        suppress_serial_logs: bool = True,
     ):
         self.llm = llm
         self.sampler = sampler
         self.logit_processor = logit_processor
         self.debug = debug
+        self.algo = algo
+        self.suppress_serial_logs = suppress_serial_logs
+        # Enforce serial generation for OpenAI-style watermarks to avoid batching issues
+        self.force_serial_generation = (
+            algo in {WatermarkingAlgorithm.OPENAI, WatermarkingAlgorithm.OPENAI_DR}
+            if algo is not None
+            else False
+        )
 
         # Validate that exactly one of sampler or logit_processor is provided
         if sampler is not None and logit_processor is not None:
@@ -119,6 +133,78 @@ class WatermarkedLLM:
 
         if self.sampler is not None:
             self._patch_vllm_sampling()
+
+    @contextmanager
+    def _quiet_serial_logs(self, preserve_stdio: bool = False):
+        """Temporarily suppress library progress/logs during serial loop.
+
+        When redirecting, we capture original stdio so the caller can briefly
+        restore it around their own progress updates.
+        """
+        if not self.suppress_serial_logs:
+            yield
+            return
+        logger_names = [
+            "vllm",
+            "vllm.engine",
+            "vllm.model_executor",
+            "vllm.worker",
+            "transformers",
+            "accelerate",
+            "torch.distributed",
+        ]
+        previous_levels: dict[str, int] = {}
+        prev_env: dict[str, str | None] = {}
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        # Save originals for temporary restoration during progress updates
+        self._original_stdout = old_stdout
+        self._original_stderr = old_stderr
+        try:
+            # Reduce log levels to minimize per-call chatter
+            for name in logger_names:
+                lg = logging.getLogger(name)
+                previous_levels[name] = lg.level
+                lg.setLevel(logging.ERROR)
+
+            # Disable tqdm/progress globally via env vars read at bar creation time
+            for key, value in {
+                "TQDM_DISABLE": "1",
+                "DISABLE_TQDM": "1",
+            }.items():
+                prev_env[key] = os.environ.get(key)
+                os.environ[key] = value
+
+            if preserve_stdio:
+                # Keep stdout/stderr so outer progress can render
+                yield
+            else:
+                # Redirect stdout/stderr to suppress any progress bar writes from libraries
+                with open(os.devnull, "w") as devnull:
+                    sys.stdout = devnull
+                    sys.stderr = devnull
+                    yield
+        finally:
+            # Restore stdout/stderr
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+            # Restore env vars
+            for key, val in prev_env.items():
+                if val is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = val
+
+            # Restore logger levels
+            for name, level in previous_levels.items():
+                logging.getLogger(name).setLevel(level)
+
+            # Clean up
+            try:
+                del self._original_stdout
+                del self._original_stderr
+            except Exception:
+                pass
 
     def _find_and_patch_samplers(self):
         """Find all samplers in the vLLM infrastructure and patch them."""
@@ -331,6 +417,43 @@ class WatermarkedLLM:
             )
         else:
             # Use sampler patching approach (traditional)
+            # For OpenAI-style watermarks, avoid batched generation due to alignment issues
+            if (
+                self.force_serial_generation
+                and isinstance(prompts, list)
+                and len(prompts) > 1
+            ):
+                progress_callback = kwargs.pop("progress_callback", None)
+                aggregated_outputs = []
+                # Always suppress library output; we'll temporarily restore stdio for the callback
+                with self._quiet_serial_logs(preserve_stdio=False):
+                    for single_prompt in prompts:
+                        single_result = self.llm.generate(
+                            [single_prompt],
+                            sampling_params=sampling_params,
+                            **kwargs,
+                        )
+                        # vLLM returns a list for multiple inputs; extract the single item
+                        if isinstance(single_result, list) and len(single_result) > 0:
+                            aggregated_outputs.append(single_result[0])
+                        else:
+                            aggregated_outputs.append(single_result)
+                        if callable(progress_callback):
+                            try:
+                                # Temporarily restore stdio so the outer tqdm can render
+                                old_out, old_err = sys.stdout, sys.stderr
+                                sys.stdout, sys.stderr = (
+                                    getattr(self, "_original_stdout", old_out),
+                                    getattr(self, "_original_stderr", old_err),
+                                )
+                                try:
+                                    progress_callback(1)
+                                finally:
+                                    sys.stdout, sys.stderr = old_out, old_err
+                            except Exception:
+                                pass
+                return aggregated_outputs
+
             return self.llm.generate(prompts, sampling_params=sampling_params, **kwargs)
 
 
@@ -366,7 +489,9 @@ class WatermarkedLLMs:
             logit_processor = WatermarkGenerators.create(
                 algo=algo, model=model, **kwargs
             )
-            return WatermarkedLLM(model, logit_processor=logit_processor, debug=debug)
+            return WatermarkedLLM(
+                model, logit_processor=logit_processor, debug=debug, algo=algo
+            )
 
         elif algo == WatermarkingAlgorithm.OPENAI:
             # OPENAI uses sampler patching
@@ -374,7 +499,7 @@ class WatermarkedLLMs:
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
             sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
 
         elif algo == WatermarkingAlgorithm.OPENAI_DR:
             # OPENAI_DR uses sampler patching (same mechanism as OPENAI)
@@ -382,7 +507,7 @@ class WatermarkedLLMs:
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
             sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
 
         elif algo == WatermarkingAlgorithm.MARYLAND:
             # MARYLAND uses sampler patching
@@ -390,7 +515,7 @@ class WatermarkedLLMs:
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
             sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
 
         elif algo == WatermarkingAlgorithm.PF:
             # PF uses sampler patching
@@ -398,7 +523,7 @@ class WatermarkedLLMs:
 
             generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
             sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug)
+            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
 
         else:
             raise ValueError(f"Unsupported watermarking algorithm: {algo}")

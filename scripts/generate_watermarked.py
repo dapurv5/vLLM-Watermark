@@ -278,8 +278,12 @@ class WatermarkDatasetProcessor:
         print(f"🎯 Generating watermarked text for {len(prompts)} prompts...")
         try:
             with tqdm(total=len(prompts), desc="Generating watermarked") as pbar:
-                outputs = wm_llm.generate(prompts, sampling_params)
-                pbar.update(len(prompts))
+                # Pass a callback so core can update this bar per prompt during serial generation
+                outputs = wm_llm.generate(
+                    prompts,
+                    sampling_params,
+                    progress_callback=pbar.update,
+                )
             return outputs
         except Exception as e:
             print(f"❌ Error during watermarked generation: {e}")
@@ -297,34 +301,6 @@ class WatermarkDatasetProcessor:
             return outputs
         except Exception as e:
             print(f"❌ Error during unwatermarked generation: {e}")
-            sys.exit(1)
-
-    def generate_watermarked_text_serial(
-        self, wm_llm: Any, prompts: List[str], sampling_params: SamplingParams
-    ) -> Tuple[List[Any], float]:
-        """Generate watermarked text one prompt at a time to avoid batching issues."""
-        print(
-            f"🎯 Generating watermarked text SERIAL for {len(prompts)} prompts (OpenAI workaround)..."
-        )
-        outputs: List[Any] = []
-        total_time: float = 0.0
-        try:
-            with tqdm(
-                total=len(prompts), desc="Generating watermarked (serial)"
-            ) as pbar:
-                for prompt in prompts:
-                    start = time.time()
-                    result = wm_llm.generate([prompt], sampling_params)
-                    total_time += time.time() - start
-                    # result is a list with one RequestOutput
-                    if isinstance(result, list) and len(result) > 0:
-                        outputs.append(result[0])
-                    else:
-                        outputs.append(result)
-                    pbar.update(1)
-            return outputs, total_time
-        except Exception as e:
-            print(f"❌ Error during watermarked serial generation: {e}")
             sys.exit(1)
 
     def process_outputs_dual(
@@ -654,17 +630,10 @@ class WatermarkDatasetProcessor:
             ngram=ngram,
             detection_threshold=detection_threshold,
         )
-        # OpenAI-style watermarking has batching alignment issues; generate serially
-        if watermarking_algorithm.upper() in {"OPENAI", "OPENAI_DR"}:
-            wm_outputs, wm_generation_time = self.generate_watermarked_text_serial(
-                wm_llm, prompts, sampling_params
-            )
-        else:
-            wm_start_time = time.time()
-            wm_outputs = self.generate_watermarked_text(
-                wm_llm, prompts, sampling_params
-            )
-            wm_generation_time = time.time() - wm_start_time
+        # Generate watermarked text (core will enforce serialization for OpenAI-style)
+        wm_start_time = time.time()
+        wm_outputs = self.generate_watermarked_text(wm_llm, prompts, sampling_params)
+        wm_generation_time = time.time() - wm_start_time
 
         # Process outputs
         processed_data, total_tokens, total_tokens_unwm, total_tokens_wm = (
