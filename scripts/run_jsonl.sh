@@ -5,8 +5,8 @@ python scripts/generate_wm_and_unwm.py \
   --input_path "resources/refusal-data.jsonl" \
   --input_key "prompt" \
   --output_path "output/refusal-data-pairs.jsonl" \
-  --watermarking_algorithm "OPENAI_DR" \
-  --model_name "meta-llama/Llama-3.2-1B" \
+  --watermarking_algorithm "MARYLAND" \
+  --model_name "google/gemma-2-27b" \
   --seed 42 \
   --ngram 2 \
   --detection_threshold 0.05 \
