@@ -1,26 +1,13 @@
 <div align="center">
   <img src="resources/vLLM-WM-Logo.png" alt="vLLM-Watermark Logo" width="200"/>
   <h1>vLLM-Watermark</h1>
-  <p><strong>A Python package for implementing various watermarking algorithms for LLM outputs</strong></p>
+  <p><strong>Tiny. Hackable. Lightning-fast watermarking for researchers built on vLLM</strong></p>
 
-  [![PyPI version](https://badge.fury.io/py/vllm-watermark.svg)](https://badge.fury.io/py/vllm-watermark)
+  <!-- [![PyPI version](https://badge.fury.io/py/vllm-watermark.svg)](https://badge.fury.io/py/vllm-watermark) -->
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-  [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
-  [![Documentation](https://img.shields.io/badge/docs-sphinx-blue.svg)](https://vllm-watermark.readthedocs.io/)
+  [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+  [![Documentation](https://img.shields.io/badge/docs-sphinx-blue.svg)](https://vermaapurv.com/vLLM-Watermark/index.html)
 </div>
-
-## Overview
-
-vLLM-Watermark is a comprehensive Python package that extends [vLLM](https://github.com/vllm-project/vllm) with state-of-the-art watermarking algorithms for Large Language Models (LLMs). It provides seamless integration with vLLM's high-performance inference engine while adding robust watermarking capabilities for text generation.
-
-### Key Features
-
-- 🔒 **Multiple Watermarking Algorithms**: Support for OpenAI, Maryland, and PF watermarking schemes
-- ⚡ **High Performance**: Built on top of vLLM for fast inference
-- 🎯 **Flexible Detection**: Multiple detection algorithms with statistical significance testing
-- 🔧 **Easy Integration**: Simple API that works with existing vLLM workflows
-- 📊 **Comprehensive Metrics**: P-values, confidence scores, and statistical analysis
-- 🧪 **Research Ready**: Designed for both production use and academic research
 
 ## Supported Algorithms
 
@@ -32,29 +19,43 @@ vLLM-Watermark is a comprehensive Python package that extends [vLLM](https://git
 
 ## Installation
 
-### From PyPI
-
-```bash
-pip install vllm-watermark  # (not available yet)
-```
-
 ### From Source
 
 ```bash
 git clone https://github.com/dapurv5/vLLM-Watermark.git
-cd vllm-watermark
+cd vLLM-Watermark
 pip install -e ".[dev]"
 ```
 
-### Dependencies
+### Dependencies (SLURM)
+```bash
+# Create conda environment
+conda create -n ml_dev311 python=3.11
+conda activate ml_dev311
 
-- Python 3.8+
-- PyTorch 2.0+
-- vLLM 0.2.0+
-- Transformers 4.30.0+
-- NumPy 1.20.0+
+# Install uv for fast package management
+conda install -c conda-forge uv
 
-## Quick Start
+# Install dependencies from requirements
+uv pip install -r requirements-slurm.txt
+
+# Install vllm-watermark package
+uv pip install -e .
+```
+
+
+
+## Prerequisites (SLURM)
+```
+module load CUDA/12.6.0
+module load GCC/13.3.0
+```
+
+The following also works
+```
+module load CUDA/12.8.0
+module load GCC/14.2.0
+```
 
 ### Basic Usage
 
@@ -70,7 +71,7 @@ llm = LLM(model="meta-llama/Llama-3.2-1B")
 wm_llm = WatermarkedLLMs.create(
     llm,
     algo=WatermarkingAlgorithm.OPENAI,
-    seed=42,
+    seed=42,  # Can also pass delta and gamma params here for MARYLAND watermark
     ngram=2
 )
 
@@ -95,59 +96,6 @@ for output in outputs:
     print(f"P-value: {result['pvalue']:.6f}")
 ```
 
-### Advanced Configuration
-
-```python
-# Maryland watermarking with custom parameters
-wm_llm = WatermarkedLLMs.create(
-    llm,
-    algo=WatermarkingAlgorithm.MARYLAND,
-    gamma=0.5,  # watermark strength
-    delta=2.0,  # threshold parameter
-    seed=123
-)
-
-# PF watermarking
-wm_llm = WatermarkedLLMs.create(
-    llm,
-    algo=WatermarkingAlgorithm.PF,
-    payload=0x12345678,  # custom payload
-    seed=456
-)
-```
-
-## Examples
-
-Check out the `examples/` directory for complete working examples:
-
-- [`example_openai.py`](examples/example_openai.py) - OpenAI watermarking with detection
-- [`example_maryland.py`](examples/example_maryland.py) - Maryland watermarking with statistical analysis
-
-## Documentation
-
-For detailed documentation, including API reference, mathematical foundations, and advanced usage patterns, visit:
-
-📖 **[Documentation](https://vermaapurv.com/vLLM-Watermark/index.html)**
-
-
-### Development Setup
-
-```bash
-git clone https://github.com/dapurv5/vLLM-Watermark.git
-cd vllm-watermark
-pip install -e ".[dev]"
-pre-commit install
-```
-
-### Running Tests
-
-```bash
-pytest tests/
-```
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Citation
 
@@ -162,20 +110,4 @@ If you use vLLM-Watermark in your research, please cite:
 }
 ```
 
-## Acknowledgments
-
-- Built on top of [vLLM](https://github.com/vllm-project/vllm) for high-performance inference
-- Implements watermarking algorithms from leading research papers
-- Inspired by the need for robust AI-generated content identification
-
-## Support
-
-- 📚 [Documentation](https://vermaapurv.com/vLLM-Watermark/index.html)
-- 🐛 [Issue Tracker](https://github.com/dapurv5/vLLM-Watermark/issues)
-- 💬 [Discussions](https://github.com/dapurv5/vLLM-Watermark/discussions)
-
 ---
-
-<div align="center">
-  <p>Made with ❤️ for the AI community</p>
-</div>

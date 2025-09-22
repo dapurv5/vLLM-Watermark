@@ -1,0 +1,25 @@
+# Core Python dependencies for vLLM-Watermark on SLURM
+# Python >= 3.11 required (recommended: 3.11.9)
+
+# Deep Learning Framework
+torch>=2.7.1
+numpy>=1.26.4
+
+# vLLM and related components
+vllm>=0.10.0
+vllm-flash-attn>=2.6.1
+# flashinfer-python>=0.3.1  # do not install it, version `GLIBCXX_3.4.32' not found
+
+# Transformers and NLP
+transformers>=4.55.0
+sentence-transformers>=3.0.1
+
+# Logging and utilities
+loguru>=0.7.3
+
+# Optional: Development dependencies (uncomment if needed)
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# black>=23.0.0
+# isort>=5.12.0
+# mypy>=1.0.0
