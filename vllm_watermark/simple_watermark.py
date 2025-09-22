@@ -24,7 +24,7 @@ if env_use_v1 is not None and env_use_v1.strip() == "0":
     VLLM_VERSION = "V0"
 else:
     try:
-        from vllm.model_executor.layers.sampler import SamplerOutput
+        from vllm.v1.outputs import SamplerOutput
         from vllm.v1.sample.metadata import SamplingMetadata
         from vllm.v1.sample.sampler import Sampler as BaseSampler
 
@@ -61,15 +61,40 @@ class WatermarkSampler(BaseSampler):
             logger.debug(f"WatermarkSampler.forward: logits shape {logits.shape}")
 
         # Extract information needed for watermarking
-        watermarked_logits = self._apply_watermarking(logits, sampling_metadata)
+        watermarked_logits, sampled_tokens = self._apply_watermarking(
+            logits, sampling_metadata
+        )
 
-        # Call the parent sampler with watermarked logits
-        return super().forward(watermarked_logits, sampling_metadata)
+        # If watermarking was applied, return the sampled tokens directly
+        # (the watermark generator already applied temperature/top_p sampling)
+        if sampled_tokens is not None:
+            # Create SamplerOutput directly with our watermarked tokens
+            # Reshape to match expected format: [batch_size, 1]
+            if sampled_tokens.dim() == 1:
+                sampled_tokens = sampled_tokens.unsqueeze(-1)
+
+            if VLLM_VERSION == "V1":
+                return SamplerOutput(
+                    sampled_token_ids=sampled_tokens, logprobs_tensors=None
+                )
+            else:
+                # For V0, we'd need a more complex SamplerOutput construction
+                # but for now we'll fall back to parent sampler
+                return super().forward(watermarked_logits, sampling_metadata)
+        else:
+            # No watermarking applied, use parent sampler
+            return super().forward(watermarked_logits, sampling_metadata)
 
     def _apply_watermarking(
         self, logits: torch.Tensor, sampling_metadata: SamplingMetadata
-    ) -> torch.Tensor:
-        """Apply watermarking by directly sampling tokens and forcing selection."""
+    ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """Apply watermarking by directly sampling tokens and forcing selection.
+
+        Returns:
+            tuple: (watermarked_logits, sampled_tokens)
+                - watermarked_logits: Modified logits for fallback to parent sampler
+                - sampled_tokens: Directly sampled tokens if watermarking applied, None otherwise
+        """
 
         try:
             # Extract sampling parameters
@@ -79,7 +104,7 @@ class WatermarkSampler(BaseSampler):
             if temperature <= 0.01:
                 if self.debug:
                     logger.debug("Skipping watermarking for greedy sampling")
-                return logits
+                return logits, None
 
             # Extract n-gram contexts
             ngram_contexts = self._extract_ngram_contexts(sampling_metadata)
@@ -87,7 +112,7 @@ class WatermarkSampler(BaseSampler):
             if not ngram_contexts:
                 if self.debug:
                     logger.debug("No n-gram contexts found, skipping watermarking")
-                return logits
+                return logits, None
 
             if self.debug:
                 logger.debug(
@@ -101,7 +126,7 @@ class WatermarkSampler(BaseSampler):
                     logger.debug(
                         f"Mismatch: {len(ngram_contexts)} contexts vs {batch_size} batch size"
                     )
-                return logits
+                return logits, None
 
             # Convert to tensor
             ngram_tokens = torch.tensor(
@@ -113,29 +138,33 @@ class WatermarkSampler(BaseSampler):
                 logits.to(torch.float32), ngram_tokens, temperature, top_p
             )
 
-            if sampled_tokens is not None:
-                # Force selection of watermarked tokens by zeroing out all other logits
-                watermarked_logits = torch.full_like(logits, -float("inf"))
-                batch_indices = torch.arange(batch_size, device=logits.device)
-                # Flatten sampled_tokens if it's nested (e.g., [[6660], [388]] -> [6660, 388])
-                if sampled_tokens.dim() > 1:
-                    sampled_tokens = sampled_tokens.squeeze(-1)
-                watermarked_logits[batch_indices, sampled_tokens] = 0.0
+            # Commenting this out since we are constructing SamplerOutput directly
+            # with our watermarked tokens
 
-                if self.debug:
-                    logger.debug(
-                        f"Applied watermarking: selected tokens {sampled_tokens.tolist()}"
-                    )
+            # if sampled_tokens is not None:
+            #     # Force selection of watermarked tokens by zeroing out all other logits
+            #     watermarked_logits = torch.full_like(logits, -float("inf"))
+            #     batch_indices = torch.arange(batch_size, device=logits.device)
+            #     # Flatten sampled_tokens if it's nested (e.g., [[6660], [388]] -> [6660, 388])
+            #     if sampled_tokens.dim() > 1:
+            #         sampled_tokens = sampled_tokens.squeeze(-1)
+            #     watermarked_logits[batch_indices, sampled_tokens] = 0.0
 
-                return watermarked_logits
-            else:
-                if self.debug:
-                    logger.debug("Watermark sampling returned None")
-                return logits
+            #     if self.debug:
+            #         logger.debug(
+            #             f"Applied watermarking: selected tokens {sampled_tokens.tolist()}"
+            #         )
+
+            #     return watermarked_logits, sampled_tokens
+            # else:
+            #     if self.debug:
+            #         logger.debug("Watermark sampling returned None")
+            #     return logits, None
+            return logits, sampled_tokens
 
         except Exception as e:
             logger.error(f"Error in watermarking: {e}")
-            return logits
+            return logits, None
 
     def _extract_sampling_params(
         self, sampling_metadata: SamplingMetadata
