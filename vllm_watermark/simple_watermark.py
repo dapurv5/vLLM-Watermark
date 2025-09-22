@@ -10,7 +10,7 @@ from typing import Optional
 
 import torch
 from loguru import logger
-from vllm import LLM, SamplingParams
+from vllm import LLM
 
 from vllm_watermark.watermark_generators.base import WmGenerator
 
@@ -89,6 +89,11 @@ class WatermarkSampler(BaseSampler):
                     logger.debug("No n-gram contexts found, skipping watermarking")
                 return logits
 
+            if self.debug:
+                logger.debug(
+                    f"About to apply watermarking with {len(ngram_contexts)} contexts"
+                )
+
             # Apply watermarking by direct token sampling
             batch_size = logits.shape[0]
             if len(ngram_contexts) != batch_size:
@@ -112,6 +117,9 @@ class WatermarkSampler(BaseSampler):
                 # Force selection of watermarked tokens by zeroing out all other logits
                 watermarked_logits = torch.full_like(logits, -float("inf"))
                 batch_indices = torch.arange(batch_size, device=logits.device)
+                # Flatten sampled_tokens if it's nested (e.g., [[6660], [388]] -> [6660, 388])
+                if sampled_tokens.dim() > 1:
+                    sampled_tokens = sampled_tokens.squeeze(-1)
                 watermarked_logits[batch_indices, sampled_tokens] = 0.0
 
                 if self.debug:
@@ -171,64 +179,161 @@ class WatermarkSampler(BaseSampler):
 
                 if self.debug:
                     logger.debug(
-                        f"V1 metadata - Prompt tokens: {len(prompt_tokens) if prompt_tokens is not None else 'None'}"
+                        f"V1 metadata - Prompt tokens type: {type(prompt_tokens)}"
                     )
                     logger.debug(
-                        f"V1 metadata - Output tokens: {len(output_tokens) if output_tokens is not None else 'None'}"
+                        f"V1 metadata - Prompt tokens content: {prompt_tokens}"
                     )
-
-                # Handle the case where these might be tensors or nested structures
-                if prompt_tokens is not None:
-                    if hasattr(prompt_tokens, "tolist"):
-                        prompt_tokens = prompt_tokens.tolist()
-                    # Flatten if it's a nested list (batch dimension)
-                    if (
-                        isinstance(prompt_tokens, list)
-                        and len(prompt_tokens) > 0
-                        and isinstance(prompt_tokens[0], list)
-                    ):
-                        prompt_tokens = prompt_tokens[0]  # Take first batch element
-                elif prompt_tokens is None:
-                    prompt_tokens = []
-
-                if output_tokens is not None:
-                    if hasattr(output_tokens, "tolist"):
-                        output_tokens = output_tokens.tolist()
-                    # Flatten if it's a nested list (batch dimension)
-                    if (
-                        isinstance(output_tokens, list)
-                        and len(output_tokens) > 0
-                        and isinstance(output_tokens[0], list)
-                    ):
-                        output_tokens = output_tokens[0]  # Take first batch element
-                elif output_tokens is None:
-                    output_tokens = []
-
-                # Ensure both are flat lists of integers
-                if not isinstance(prompt_tokens, list):
-                    prompt_tokens = []
-                if not isinstance(output_tokens, list):
-                    output_tokens = []
-
-                # For V1, we might have multiple sequences batched together
-                # For now, assume single sequence and create one context
-                all_tokens = prompt_tokens + output_tokens
-
-                if self.debug:
-                    logger.debug(f"Combined tokens length: {len(all_tokens)}")
                     logger.debug(
-                        f"Last 10 tokens: {all_tokens[-10:] if len(all_tokens) > 10 else all_tokens}"
+                        f"V1 metadata - Output tokens type: {type(output_tokens)}"
+                    )
+                    logger.debug(
+                        f"V1 metadata - Output tokens content: {output_tokens}"
                     )
 
-                # Extract last n-gram
-                ngram_size = self.watermark_generator.ngram
-                if len(all_tokens) >= ngram_size:
-                    ngram_context = all_tokens[-ngram_size:]
+                    # Debug the full sampling metadata structure
+                    logger.debug(f"Full sampling metadata: {vars(sampling_metadata)}")
+
+                # Handle batched tokens properly - process each sequence in the batch
+                # Convert to lists if they're tensors
+                if prompt_tokens is not None and hasattr(prompt_tokens, "tolist"):
+                    prompt_tokens = prompt_tokens.tolist()
+                    # Get padding token from watermark generator's tokenizer
+                    pad_token_id = None
+                    if hasattr(self.watermark_generator, "tokenizer"):
+                        tokenizer = self.watermark_generator.tokenizer
+                        if hasattr(tokenizer, "pad_token_id"):
+                            pad_token_id = tokenizer.pad_token_id
+                    if pad_token_id is not None:
+                        if isinstance(prompt_tokens[0], list):
+                            # Batched case: remove padding from each sequence
+                            prompt_tokens = [
+                                [token for token in seq if token != pad_token_id]
+                                for seq in prompt_tokens
+                            ]
+                        else:
+                            # Single sequence case: remove padding
+                            prompt_tokens = [
+                                token
+                                for token in prompt_tokens
+                                if token != pad_token_id
+                            ]
+                if output_tokens is not None and hasattr(output_tokens, "tolist"):
+                    output_tokens = output_tokens.tolist()
+
+                # Determine if we have batched data
+                is_batched_prompts = (
+                    isinstance(prompt_tokens, list)
+                    and len(prompt_tokens) > 0
+                    and isinstance(prompt_tokens[0], list)
+                )
+                is_batched_outputs = (
+                    isinstance(output_tokens, list)
+                    and len(output_tokens) > 0
+                    and isinstance(output_tokens[0], list)
+                )
+
+                # Handle batched vs single sequence
+                if is_batched_prompts or is_batched_outputs:
+                    # We have batched data - process each sequence separately
+                    batch_prompt_tokens = (
+                        prompt_tokens
+                        if is_batched_prompts
+                        else [prompt_tokens] if prompt_tokens else [[]]
+                    )
+                    batch_output_tokens = (
+                        output_tokens
+                        if is_batched_outputs
+                        else [output_tokens] if output_tokens else [[]]
+                    )
+
+                    # Ensure both batches have the same length
+                    max_batch_size = max(
+                        len(batch_prompt_tokens), len(batch_output_tokens)
+                    )
+
+                    # Pad shorter batch with empty lists
+                    while len(batch_prompt_tokens) < max_batch_size:
+                        batch_prompt_tokens.append([])
+                    while len(batch_output_tokens) < max_batch_size:
+                        batch_output_tokens.append([])
+
+                    if self.debug:
+                        logger.debug(f"Processing {max_batch_size} sequences in batch")
+
+                    # Process each sequence in the batch
+                    for i in range(max_batch_size):
+                        seq_prompt_tokens = (
+                            batch_prompt_tokens[i] if batch_prompt_tokens[i] else []
+                        )
+                        seq_output_tokens = (
+                            batch_output_tokens[i] if batch_output_tokens[i] else []
+                        )
+
+                        # Combine tokens for this sequence
+                        all_tokens = seq_prompt_tokens + seq_output_tokens
+
+                        if self.debug:
+                            logger.debug(
+                                f"Sequence {i}: Combined tokens length: {len(all_tokens)}"
+                            )
+                            logger.debug(
+                                f"Sequence {i}: Prompt tokens: {seq_prompt_tokens}"
+                            )
+                            logger.debug(
+                                f"Sequence {i}: Output tokens: {seq_output_tokens}"
+                            )
+                            if len(all_tokens) > 10:
+                                logger.debug(
+                                    f"Sequence {i}: Last 10 tokens: {all_tokens[-10:]}"
+                                )
+                            else:
+                                logger.debug(f"Sequence {i}: All tokens: {all_tokens}")
+
+                        # Extract last n-gram for this sequence - ONLY use generated tokens for watermarking
+                        ngram_size = self.watermark_generator.ngram
+
+                        # Only use output tokens for n-gram context (not prompt tokens)
+                        if len(seq_output_tokens) >= ngram_size:
+                            ngram_context = seq_output_tokens[-ngram_size:]
+                        elif len(seq_output_tokens) > 0:
+                            # Pad with zeros if not enough output tokens yet
+                            ngram_context = [0] * (
+                                ngram_size - len(seq_output_tokens)
+                            ) + seq_output_tokens
+                        else:
+                            # No output tokens yet - skip this sequence
+                            continue
+
+                        ngram_contexts.append(ngram_context)
+
                 else:
-                    # Pad with zeros if not enough tokens
-                    ngram_context = [0] * (ngram_size - len(all_tokens)) + all_tokens
+                    # Single sequence case
+                    prompt_tokens = prompt_tokens if prompt_tokens else []
+                    output_tokens = output_tokens if output_tokens else []
 
-                ngram_contexts.append(ngram_context)
+                    if self.debug:
+                        logger.debug(
+                            f"Single sequence: Prompt tokens length: {len(prompt_tokens)}"
+                        )
+                        logger.debug(
+                            f"Single sequence: Output tokens length: {len(output_tokens)}"
+                        )
+
+                    # Extract last n-gram - ONLY use generated tokens for watermarking
+                    ngram_size = self.watermark_generator.ngram
+                    if len(output_tokens) >= ngram_size:
+                        ngram_context = output_tokens[-ngram_size:]
+                    elif len(output_tokens) > 0:
+                        # Pad with zeros if not enough output tokens yet
+                        ngram_context = [0] * (
+                            ngram_size - len(output_tokens)
+                        ) + output_tokens
+                    else:
+                        # No output tokens yet - skip watermarking
+                        return ngram_contexts
+
+                    ngram_contexts.append(ngram_context)
 
             elif (
                 hasattr(sampling_metadata, "seq_groups")
@@ -507,7 +612,39 @@ class WatermarkedLLM:
 def create_watermarked_llm(
     model: str, watermark_generator: WmGenerator, debug: bool = False, **llm_kwargs
 ) -> WatermarkedLLM:
-    """Create a watermarked LLM."""
-    return WatermarkedLLM(
-        model=model, watermark_generator=watermark_generator, debug=debug, **llm_kwargs
-    )
+    """
+    Create a watermarked LLM using a clean sampler override approach.
+
+    Args:
+        model: Model name or path
+        watermark_generator: Watermark generator instance
+        debug: Enable debug logging
+        **llm_kwargs: Additional arguments for vLLM LLM constructor
+
+    Returns:
+        WatermarkedLLM instance with watermarking capabilities
+
+    Raises:
+        ValueError: If model or watermark_generator is invalid
+        RuntimeError: If watermark injection fails
+    """
+    # Input validation
+    if not isinstance(model, str) or not model.strip():
+        raise ValueError("Model must be a non-empty string")
+
+    if watermark_generator is None:
+        raise ValueError("Watermark generator cannot be None")
+
+    if not hasattr(watermark_generator, "sample_next"):
+        raise ValueError("Watermark generator must have a 'sample_next' method")
+
+    try:
+        return WatermarkedLLM(
+            model=model,
+            watermark_generator=watermark_generator,
+            debug=debug,
+            **llm_kwargs,
+        )
+    except Exception as e:
+        logger.error(f"Failed to create watermarked LLM: {e}")
+        raise RuntimeError(f"Watermark injection failed: {e}") from e

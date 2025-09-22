@@ -24,11 +24,10 @@ def main():
     # Example 1: Using the new engine (recommended)
     print("=== New Engine Example ===")
 
-    # Create watermarked LLM with the new engine
+    # Create watermarked LLM with the new clean implementation
     watermarked_llm = WatermarkedLLMs.create(
         model="meta-llama/Llama-3.2-1B",  # Model name as string
         algo=WatermarkingAlgorithm.OPENAI,
-        use_new_engine=True,  # Use the new clean engine (default)
         debug=True,
         ngram=2,
         seed=42,

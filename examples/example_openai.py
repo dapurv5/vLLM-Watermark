@@ -5,7 +5,7 @@ import sys
 # export VLLM_ENABLE_V1_MULTIPROCESSING=0
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from vllm import LLM, SamplingParams
+from vllm import SamplingParams
 
 from vllm_watermark.core import (
     DetectionAlgorithm,
@@ -14,18 +14,22 @@ from vllm_watermark.core import (
 )
 from vllm_watermark.watermark_detectors import WatermarkDetectors
 
-# Load the vLLM model
-llm = LLM(model="meta-llama/Llama-3.2-1B")
-
-# Create an OpenAI watermarked LLM (this wraps and patches the LLM)
+# Create a watermarked LLM using the new clean implementation
 wm_llm = WatermarkedLLMs.create(
-    llm, algo=WatermarkingAlgorithm.OPENAI, seed=42, ngram=2
+    model="meta-llama/Llama-3.2-1B",  # Pass model name directly
+    algo=WatermarkingAlgorithm.OPENAI,
+    seed=42,
+    ngram=2,
+    debug=False,  # Set to True for detailed logging
+    # vLLM parameters
+    enforce_eager=True,
+    max_model_len=1024,
 )
 
 # Create OpenAI detector with matching parameters
 detector = WatermarkDetectors.create(
     algo=DetectionAlgorithm.OPENAI_Z,
-    model=llm,  # Factory handles tokenizer extraction and vocab size inference
+    model=wm_llm,  # Use the watermarked LLM for tokenizer extraction
     ngram=2,
     seed=42,
     payload=0,  # Match the generator's payload
