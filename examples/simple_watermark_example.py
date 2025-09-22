@@ -8,6 +8,11 @@ import sys
 # Add the project root to Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
+# IMPORTANT: For watermarking to work, disable multiprocessing
+# This allows the sampler replacement to work correctly
+os.environ["VLLM_USE_V1"] = "1"  # Use V1 for better performance
+os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"  # Required for watermarking
+
 from vllm import SamplingParams
 
 from vllm_watermark.core import DetectionAlgorithm, WatermarkingAlgorithm
@@ -38,7 +43,7 @@ def test_openai_watermark():
     watermarked_llm = create_watermarked_llm(
         model=model_name,
         watermark_generator=generator,
-        debug=False,  # Disable debug for cleaner output
+        debug=True,  # Enable debug to see sampler replacement structure
         enforce_eager=True,
         max_model_len=1024,
     )

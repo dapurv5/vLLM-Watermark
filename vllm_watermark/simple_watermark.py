@@ -564,22 +564,43 @@ class WatermarkedLLM:
             # Find and replace samplers in the engine
             if hasattr(self.llm, "llm_engine"):
                 engine = self.llm.llm_engine
-
+                logger.info(f"Engine: {engine}")
                 # Navigate to model executor and find samplers
                 samplers_replaced = 0
 
                 if hasattr(engine, "model_executor"):
                     # V0 structure
                     model_executor = engine.model_executor
+                    logger.info(f"Model executor: {model_executor}")
                     samplers_replaced += self._replace_samplers_in_executor(
                         model_executor, watermark_sampler
                     )
 
                 elif hasattr(engine, "engine_core"):
                     # V1 structure
+                    logger.info(f"Engine core: {engine.engine_core}")
                     engine_core = engine.engine_core
-                    if hasattr(engine_core, "model_executor"):
+
+                    # Debug: Log engine_core structure
+                    if self.debug:
+                        logger.debug(f"Engine core type: {type(engine_core)}")
+                        logger.debug(f"Engine core attributes: {dir(engine_core)}")
+
+                    # Handle V1 multiprocessing case (SyncMPClient)
+                    if hasattr(engine_core, "engine_core"):
+                        # Multiprocessing case - get the actual engine core
+                        actual_engine_core = engine_core.engine_core
+                        logger.info(f"Actual engine core (MP): {actual_engine_core}")
+                        if hasattr(actual_engine_core, "model_executor"):
+                            model_executor = actual_engine_core.model_executor
+                            logger.info(f"Model executor (MP): {model_executor}")
+                            samplers_replaced += self._replace_samplers_in_executor(
+                                model_executor, watermark_sampler
+                            )
+                    elif hasattr(engine_core, "model_executor"):
+                        # Single process case
                         model_executor = engine_core.model_executor
+                        logger.info(f"Model executor: {model_executor}")
                         samplers_replaced += self._replace_samplers_in_executor(
                             model_executor, watermark_sampler
                         )
@@ -591,6 +612,15 @@ class WatermarkedLLM:
                 else:
                     logger.warning("No samplers found to replace")
 
+                    # Check if this is a V1 multiprocessing issue
+                    if hasattr(engine, "engine_core") and "SyncMPClient" in str(
+                        type(engine.engine_core)
+                    ):
+                        logger.warning(
+                            "Detected vLLM V1 with multiprocessing enabled. "
+                            "For watermarking to work, please set: VLLM_ENABLE_V1_MULTIPROCESSING=0"
+                        )
+
         except Exception as e:
             logger.error(f"Failed to replace sampler: {e}")
             raise
@@ -598,6 +628,18 @@ class WatermarkedLLM:
     def _replace_samplers_in_executor(self, model_executor, watermark_sampler) -> int:
         """Replace samplers in a model executor. Returns number of samplers replaced."""
         count = 0
+
+        # Debug: Log the structure we're working with
+        if self.debug:
+            logger.debug(f"Model executor type: {type(model_executor)}")
+            logger.debug(f"Model executor attributes: {dir(model_executor)}")
+            if hasattr(model_executor, "driver_worker"):
+                logger.debug(
+                    f"Driver worker type: {type(model_executor.driver_worker)}"
+                )
+                logger.debug(
+                    f"Driver worker attributes: {dir(model_executor.driver_worker)}"
+                )
 
         # Check driver worker
         if hasattr(model_executor, "driver_worker"):
