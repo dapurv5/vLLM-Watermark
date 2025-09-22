@@ -32,6 +32,87 @@ class DetectionAlgorithm(Enum):
     PF_SAMPLING = "pf_sampling"
 
 
+class LogitProcessorWatermarkedLLM:
+    """Watermarked LLM that uses logit processors instead of sampler replacement."""
+
+    def __init__(self, llm, logit_processor, debug: bool = False):
+        """
+        Create a logit processor-based watermarked LLM.
+
+        Args:
+            llm: vLLM LLM instance
+            logit_processor: Logit processor to use for watermarking
+            debug: Enable debug logging
+        """
+        self.llm = llm
+        self.logit_processor = logit_processor
+        self.debug = debug
+
+        if self.debug:
+            model_name = getattr(llm, "model_name", "unknown")
+            logger.info(
+                f"Created LogitProcessorWatermarkedLLM with model: {model_name}"
+            )
+
+    def generate(self, prompts, sampling_params=None, **kwargs):
+        """
+        Generate text using logit processor watermarking.
+
+        Args:
+            prompts: Input prompts
+            sampling_params: Sampling parameters
+            **kwargs: Additional generation arguments
+
+        Returns:
+            Generated outputs
+
+        Raises:
+            ValueError: If vLLM V1 is being used (logit processors not supported)
+        """
+        import os
+
+        # Check if vLLM V1 is being used
+        vllm_use_v1 = os.environ.get("VLLM_USE_V1", "0") == "1"
+        if vllm_use_v1:
+            raise ValueError(
+                "vLLM V1 does not support per-request logits processors. "
+                "For MARYLAND_L watermarking, please use vLLM V0 by setting: "
+                "os.environ['VLLM_USE_V1'] = '0' or removing the environment variable."
+            )
+
+        # Use logit processor approach
+        # Import here to avoid circular imports
+        from vllm import SamplingParams
+
+        # If no sampling params provided, create default ones
+        if sampling_params is None:
+            sampling_params = SamplingParams()
+
+        # Clone sampling params to avoid modifying the original
+        # Use the built-in clone method to preserve all parameters correctly
+        modified_sampling_params = sampling_params.clone()
+
+        # Add our logit processor to the existing ones
+        if modified_sampling_params.logits_processors is None:
+            modified_sampling_params.logits_processors = []
+
+        modified_sampling_params.logits_processors.append(self.logit_processor)
+
+        if self.debug:
+            logger.info(
+                f"Added logit processor to sampling params: {type(self.logit_processor).__name__}"
+            )
+
+        # Generate with the modified sampling parameters
+        return self.llm.generate(
+            prompts, sampling_params=modified_sampling_params, **kwargs
+        )
+
+    def __getattr__(self, name):
+        """Delegate other attributes to the underlying LLM."""
+        return getattr(self.llm, name)
+
+
 class WatermarkUtils:
     """Utility functions for watermarking."""
 
@@ -144,19 +225,11 @@ class WatermarkedLLMs:
         vllm_kwargs = {}
 
         for key, value in kwargs.items():
-            if key in ["ngram", "seed", "payload", "tokenizer"]:
+            if key in ["ngram", "seed", "payload", "tokenizer", "gamma", "delta"]:
                 generator_kwargs[key] = value
             else:
                 vllm_kwargs[key] = value
 
-        # Create watermark generator
-        generator = WatermarkGenerators.create(
-            algo=algo,
-            model=model_name,
-            **generator_kwargs,
-        )
-
-        # If model is a string, pass it to create_watermarked_llm to create the LLM
         # Only support LLM objects
         from vllm import LLM
 
@@ -171,11 +244,31 @@ class WatermarkedLLMs:
                 f"LLM instance provided, ignoring vllm_kwargs: {vllm_kwargs}"
             )
 
-        watermarked_llm = create_watermarked_llm(
-            llm=model,
-            watermark_generator=generator,
-            debug=debug,
-        )
+        # Handle different algorithm types
+        if algo == WatermarkingAlgorithm.MARYLAND_L:
+            # Use logit processor approach for MARYLAND_L
+            logit_processor = WatermarkGenerators.create(
+                algo=algo,
+                model=model_name,
+                **generator_kwargs,
+            )
+            watermarked_llm = LogitProcessorWatermarkedLLM(
+                llm=model,
+                logit_processor=logit_processor,
+                debug=debug,
+            )
+        else:
+            # Use sampler replacement approach for other algorithms
+            generator = WatermarkGenerators.create(
+                algo=algo,
+                model=model_name,
+                **generator_kwargs,
+            )
+            watermarked_llm = create_watermarked_llm(
+                llm=model,
+                watermark_generator=generator,
+                debug=debug,
+            )
 
         logger.info("Successfully created watermarked LLM")
         return watermarked_llm

@@ -1,8 +1,8 @@
 import os
 import sys
 
-# export VLLM_USE_V1=0
-# export VLLM_ENABLE_V1_MULTIPROCESSING=0
+os.environ["VLLM_USE_V1"] = "0"  # Use V0 for logit processor support
+os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"  # Not applicable for V0
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from vllm import LLM, SamplingParams
@@ -15,7 +15,7 @@ from vllm_watermark.core import (
 from vllm_watermark.watermark_detectors import WatermarkDetectors
 
 # Load the vLLM model
-llm = LLM(model="meta-llama/Llama-3.2-1B")
+llm = LLM(model="Qwen/Qwen2.5-1.5B-Instruct")
 
 # Create a Maryland_L watermarked LLM (this uses logit processors instead of sampler patching)
 wm_llm = WatermarkedLLMs.create(

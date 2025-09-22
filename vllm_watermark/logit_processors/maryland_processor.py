@@ -127,12 +127,20 @@ class MarylandLogitProcessor:
         # Create greenlist
         greenlist = vocab_permutation[: int(self.gamma * self.vocab_size)]
 
-        # Create bias tensor
-        bias = torch.zeros(self.vocab_size, device=self.device)
-        bias[greenlist] = self.delta
+        # Get actual logits size to handle vocab size mismatches
+        actual_vocab_size = modified_logits.size(-1)
 
-        # Apply payload shift
-        bias = bias.roll(-self.payload)
+        # Create bias tensor with the actual vocab size
+        bias = torch.zeros(actual_vocab_size, device=self.device)
+
+        # Only apply bias to valid indices (handle vocab size mismatch)
+        valid_greenlist = greenlist[greenlist < actual_vocab_size]
+        if len(valid_greenlist) > 0:
+            bias[valid_greenlist] = self.delta
+
+        # Apply payload shift (handle wraparound for smaller vocab)
+        if self.payload < actual_vocab_size:
+            bias = bias.roll(-self.payload)
 
         # Add bias to logits
         modified_logits += bias

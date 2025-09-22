@@ -1,11 +1,11 @@
 import os
 import sys
 
-# export VLLM_USE_V1=1  # (V0 Sampler does not give correct results)
-# export VLLM_ENABLE_V1_MULTIPROCESSING=0
+os.environ["VLLM_USE_V1"] = "1"  # Use V1 for better performance (V0 has issues)
+os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"  # Required for watermarking
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from vllm import SamplingParams
+from vllm import LLM, SamplingParams
 
 from vllm_watermark.core import (
     DetectionAlgorithm,
@@ -14,22 +14,26 @@ from vllm_watermark.core import (
 )
 from vllm_watermark.watermark_detectors import WatermarkDetectors
 
+# Load the vLLM model
+llm = LLM(
+    model="meta-llama/Llama-3.2-1B",
+    enforce_eager=True,
+    max_model_len=1024,
+)
+
 # Create a watermarked LLM using the new clean implementation
 wm_llm = WatermarkedLLMs.create(
-    model="meta-llama/Llama-3.2-1B",  # Pass model name directly
+    model=llm,
     algo=WatermarkingAlgorithm.OPENAI,
     seed=42,
     ngram=2,
     debug=False,  # Set to True for detailed logging
-    # vLLM parameters
-    enforce_eager=True,
-    max_model_len=1024,
 )
 
 # Create OpenAI detector with matching parameters
 detector = WatermarkDetectors.create(
     algo=DetectionAlgorithm.OPENAI_Z,
-    model=wm_llm,  # Use the watermarked LLM for tokenizer extraction
+    model=llm,  # Use the base LLM for tokenizer extraction
     ngram=2,
     seed=42,
     payload=0,  # Match the generator's payload

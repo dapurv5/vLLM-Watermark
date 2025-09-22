@@ -1,8 +1,8 @@
 import os
 import sys
 
-# export VLLM_USE_V1=1  # (V0 Sampler preferred)
-# export VLLM_ENABLE_V1_MULTIPROCESSING=0
+os.environ["VLLM_USE_V1"] = "1"  # Use V1 for better performance (V0 has issues)
+os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"  # Required for watermarking
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from vllm import LLM, SamplingParams
