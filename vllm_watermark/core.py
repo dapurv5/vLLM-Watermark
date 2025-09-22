@@ -29,7 +29,7 @@ class DetectionAlgorithm(Enum):
     OPENAI_DR = "openai_dr"
     MARYLAND = "maryland"
     MARYLAND_Z = "maryland_z"
-    PF_SAMPLING = "pf_sampling"
+    PF = "pf"
 
 
 class LogitProcessorWatermarkedLLM:

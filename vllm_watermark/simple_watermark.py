@@ -701,7 +701,27 @@ class WatermarkedLLM:
             num_prompts = len(prompts) if isinstance(prompts, list) else 1
             logger.debug(f"Generating for {num_prompts} prompt(s)")
 
-        return self.llm.generate(prompts, sampling_params=sampling_params, **kwargs)
+        # Filter out unsupported arguments before passing to vLLM
+        supported_args = {}
+        unsupported_args = {}
+
+        # List of known supported arguments for vLLM LLM.generate()
+        vllm_supported_args = {"use_tqdm", "lora_request", "prompt_adapter_request"}
+
+        for key, value in kwargs.items():
+            if key in vllm_supported_args:
+                supported_args[key] = value
+            else:
+                unsupported_args[key] = value
+
+        if unsupported_args and self.debug:
+            logger.debug(
+                f"Filtering out unsupported arguments: {list(unsupported_args.keys())}"
+            )
+
+        return self.llm.generate(
+            prompts, sampling_params=sampling_params, **supported_args
+        )
 
     def get_tokenizer(self):
         """Get the tokenizer."""

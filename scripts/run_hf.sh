@@ -1,18 +1,19 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+#  --delta 2.0 \
+#  --gamma 0.25 \
+
 python scripts/generate_wm_and_unwm.py \
   --input_path "truthfulqa/truthful_qa" \
   --hf_name "generation" \
   --hf_split "validation" \
   --input_key "question" \
   --output_path "output/truthfulqa_pairs.jsonl" \
-  --watermarking_algorithm "MARYLAND" \
+  --watermarking_algorithm "OPENAI" \
   --model_name "meta-llama/Llama-3.2-1B" \
   --seed 42 \
   --ngram 4 \
-  --delta 2.0 \
-  --gamma 0.25 \
   --detection_threshold 0.05 \
   --temperature 0.8 \
   --max_tokens 128 \
