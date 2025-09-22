@@ -101,6 +101,8 @@ class WatermarkUtils:
 
 
 class WatermarkedLLM:
+    """Legacy wrapper for backward compatibility. Prefer using WatermarkedLLMs.create() instead."""
+
     def __init__(
         self,
         llm: LLM,
@@ -109,6 +111,7 @@ class WatermarkedLLM:
         debug: bool = False,
         algo: Optional[WatermarkingAlgorithm] = None,
         suppress_serial_logs: bool = True,
+        use_new_engine: bool = True,  # New parameter to control which engine to use
     ):
         self.llm = llm
         self.sampler = sampler
@@ -116,10 +119,13 @@ class WatermarkedLLM:
         self.debug = debug
         self.algo = algo
         self.suppress_serial_logs = suppress_serial_logs
+        self.use_new_engine = use_new_engine
+
         # Enforce serial generation for OpenAI-style watermarks to avoid batching issues
+        # Note: The new engine handles this more elegantly
         self.force_serial_generation = (
             algo in {WatermarkingAlgorithm.OPENAI, WatermarkingAlgorithm.OPENAI_DR}
-            if algo is not None
+            if algo is not None and not use_new_engine
             else False
         )
 
@@ -131,8 +137,14 @@ class WatermarkedLLM:
         if sampler is None and logit_processor is None:
             raise ValueError("Must provide either sampler or logit_processor.")
 
-        if self.sampler is not None:
+        # Use legacy monkey patching only if new engine is disabled
+        if self.sampler is not None and not use_new_engine:
             self._patch_vllm_sampling()
+        elif self.sampler is not None and use_new_engine:
+            logger.warning(
+                "Sampler-based watermarking with new engine is handled automatically. "
+                "The provided sampler parameter will be ignored."
+            )
 
     @contextmanager
     def _quiet_serial_logs(self, preserve_stdio: bool = False):
@@ -466,66 +478,145 @@ class WatermarkedLLMs:
         model,
         algo: WatermarkingAlgorithm = WatermarkingAlgorithm.OPENAI,
         debug: bool = False,
+        use_new_engine: bool = True,
         **kwargs,
-    ) -> WatermarkedLLM:
+    ):
+        """
+        Create a watermarked LLM instance.
+
+        Args:
+            model: Model name/path or vLLM LLM instance
+            algo: Watermarking algorithm to use
+            debug: Enable debug logging
+            use_new_engine: Use new clean engine (recommended) vs legacy monkey patching
+            **kwargs: Additional arguments for watermark generator or vLLM
+
+        Returns:
+            Watermarked LLM instance
+        """
         from vllm_watermark.watermark_generators import WatermarkGenerators
 
-        # If running with V0 engine, prefer logits-processor variant for
-        # Maryland to avoid patching the sampler in older engine.
-        try:
-            import os
+        # Split kwargs into generator args and vLLM args
+        generator_kwargs = {}
+        vllm_kwargs = {}
 
-            use_v1_env = os.environ.get("VLLM_USE_V1")
-            is_v1_disabled = use_v1_env is not None and use_v1_env.strip() == "0"
-        except Exception:
-            is_v1_disabled = False
+        # Known generator parameters
+        generator_params = {
+            "ngram",
+            "seed",
+            "seeding",
+            "salt_key",
+            "payload",
+            "gamma",
+            "delta",
+            "vocab_size",
+            "tokenizer",
+        }
 
-        if algo == WatermarkingAlgorithm.MARYLAND and is_v1_disabled:
-            logger.info(
-                "VLLM_USE_V1=0 detected; using MARYLAND_L (logit processor) instead of sampler patching."
+        for key, value in kwargs.items():
+            if key in generator_params:
+                generator_kwargs[key] = value
+            else:
+                vllm_kwargs[key] = value
+
+        if use_new_engine:
+            # Use the new clean engine approach
+            from vllm_watermark.engine import create_watermarked_llm
+
+            # Handle both string model names and LLM instances
+            if isinstance(model, str):
+                model_name = model
+            else:
+                # If model is already an LLM instance, we need to create a new one
+                # with the same configuration for the new engine
+                logger.warning(
+                    "Using new engine with existing LLM instance. "
+                    "Extracting model name and recreating LLM for clean integration."
+                )
+                # Try to extract model name from existing LLM
+                if hasattr(model, "llm_engine") and hasattr(
+                    model.llm_engine, "model_config"
+                ):
+                    model_name = model.llm_engine.model_config.model
+                else:
+                    raise ValueError(
+                        "Cannot extract model name from LLM instance. "
+                        "Please provide model name as string when using new engine."
+                    )
+
+            # Create watermark generator
+            # For new engine, we always create the generator first
+            generator = WatermarkGenerators.create(
+                algo=algo,
+                model=model_name,  # Pass model name for tokenizer inference
+                **generator_kwargs,
             )
-            algo = WatermarkingAlgorithm.MARYLAND_L
 
-        if algo == WatermarkingAlgorithm.MARYLAND_L:
-            # MARYLAND_L uses logit processors instead of sampler patching
-            logit_processor = WatermarkGenerators.create(
-                algo=algo, model=model, **kwargs
+            # Create watermarked LLM with new engine
+            return create_watermarked_llm(
+                model=model_name,
+                watermark_generator=generator,
+                debug=debug,
+                **vllm_kwargs,
             )
-            return WatermarkedLLM(
-                model, logit_processor=logit_processor, debug=debug, algo=algo
-            )
-
-        elif algo == WatermarkingAlgorithm.OPENAI:
-            # OPENAI uses sampler patching
-            from vllm_watermark.samplers.custom_sampler import CustomSampler
-
-            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
-
-        elif algo == WatermarkingAlgorithm.OPENAI_DR:
-            # OPENAI_DR uses sampler patching (same mechanism as OPENAI)
-            from vllm_watermark.samplers.custom_sampler import CustomSampler
-
-            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
-
-        elif algo == WatermarkingAlgorithm.MARYLAND:
-            # MARYLAND uses sampler patching
-            from vllm_watermark.samplers.custom_sampler import CustomSampler
-
-            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
-
-        elif algo == WatermarkingAlgorithm.PF:
-            # PF uses sampler patching
-            from vllm_watermark.samplers.custom_sampler import CustomSampler
-
-            generator = WatermarkGenerators.create(algo=algo, model=model, **kwargs)
-            sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
-            return WatermarkedLLM(model, sampler=sampler, debug=debug, algo=algo)
 
         else:
-            raise ValueError(f"Unsupported watermarking algorithm: {algo}")
+            # Use legacy approach with monkey patching
+            logger.warning(
+                "Using legacy engine with monkey patching. "
+                "Consider migrating to use_new_engine=True for better stability."
+            )
+
+            # Ensure model is an LLM instance for legacy approach
+            if isinstance(model, str):
+                from vllm import LLM
+
+                model = LLM(model=model, **vllm_kwargs)
+
+            # Legacy logic for different algorithms
+            try:
+                import os
+
+                use_v1_env = os.environ.get("VLLM_USE_V1")
+                is_v1_disabled = use_v1_env is not None and use_v1_env.strip() == "0"
+            except Exception:
+                is_v1_disabled = False
+
+            if algo == WatermarkingAlgorithm.MARYLAND and is_v1_disabled:
+                logger.info(
+                    "VLLM_USE_V1=0 detected; using MARYLAND_L (logit processor) instead of sampler patching."
+                )
+                algo = WatermarkingAlgorithm.MARYLAND_L
+
+            if algo == WatermarkingAlgorithm.MARYLAND_L:
+                # MARYLAND_L uses logit processors instead of sampler patching
+                logit_processor = WatermarkGenerators.create(
+                    algo=algo, model=model, **generator_kwargs
+                )
+                return WatermarkedLLM(
+                    model,
+                    logit_processor=logit_processor,
+                    debug=debug,
+                    algo=algo,
+                    use_new_engine=False,
+                )
+
+            elif algo in {
+                WatermarkingAlgorithm.OPENAI,
+                WatermarkingAlgorithm.OPENAI_DR,
+                WatermarkingAlgorithm.MARYLAND,
+                WatermarkingAlgorithm.PF,
+            }:
+                # These algorithms use sampler patching in legacy mode
+                from vllm_watermark.samplers.custom_sampler import CustomSampler
+
+                generator = WatermarkGenerators.create(
+                    algo=algo, model=model, **generator_kwargs
+                )
+                sampler = CustomSampler(model, generator, debug=debug)  # type: ignore
+                return WatermarkedLLM(
+                    model, sampler=sampler, debug=debug, algo=algo, use_new_engine=False
+                )
+
+            else:
+                raise ValueError(f"Unsupported watermarking algorithm: {algo}")

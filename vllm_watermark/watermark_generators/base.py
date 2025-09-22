@@ -26,15 +26,21 @@ class WmGenerator(ABC):
         self.model = model
         self.max_seq_len = 1024
 
-        # Handle pad_token_id - use eos_token_id as fallback if pad_token_id is None
-        self.pad_id = tokenizer.pad_token_id
+        # Handle pad_token_id gracefully
+        self.pad_id = getattr(tokenizer, "pad_token_id", None)
         if self.pad_id is None:
-            self.pad_id = tokenizer.eos_token_id
-            if self.pad_id is None:
-                # Final fallback - use 0 (typically corresponds to some special token)
-                self.pad_id = 0
+            self.pad_id = getattr(tokenizer, "eos_token_id", None)
+        if self.pad_id is None:
+            # Final fallback - use 0 (commonly corresponds to <unk> or <pad>)
+            self.pad_id = 0
 
-        self.eos_id = tokenizer.eos_token_id
+        self.eos_id = getattr(tokenizer, "eos_token_id", None)
+        if self.eos_id is None:
+            # Fallback: use pad_token_id if available
+            self.eos_id = getattr(tokenizer, "pad_token_id", None)
+        if self.eos_id is None:
+            # Final fallback - use 0
+            self.eos_id = 0
 
         # watermark config
         self.ngram = ngram
