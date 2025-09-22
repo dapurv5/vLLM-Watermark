@@ -110,7 +110,7 @@ class WatermarkedLLMs:
 
     @staticmethod
     def create(
-        model: Union[str, "LLM"],
+        model,
         algo: WatermarkingAlgorithm = WatermarkingAlgorithm.OPENAI,
         debug: bool = False,
         **kwargs,
@@ -119,10 +119,10 @@ class WatermarkedLLMs:
         Create a watermarked LLM using the clean implementation.
 
         Args:
-            model: Model name string or vLLM LLM instance
+            model: vLLM LLM instance to add watermarking to
             algo: Watermarking algorithm to use
             debug: Enable debug logging
-            **kwargs: Additional arguments for watermark generator and vLLM
+            **kwargs: Additional arguments for watermark generator
 
         Returns:
             Watermarked LLM instance
@@ -132,12 +132,12 @@ class WatermarkedLLMs:
 
         logger.info(f"Creating watermarked LLM with algorithm: {algo.value}")
 
-        # Extract model name for tokenizer if needed
-        model_name = (
-            model
-            if isinstance(model, str)
-            else getattr(model, "model_config", {}).get("model", model)
-        )
+        # Extract model name for tokenizer from LLM instance
+        if hasattr(model, "model_config") and hasattr(model.model_config, "model"):
+            model_name = model.model_config.model
+        else:
+            # Fallback to the model object itself for tokenizer creation
+            model_name = model
 
         # Separate watermark generator kwargs from vLLM kwargs
         generator_kwargs = {}
@@ -157,28 +157,25 @@ class WatermarkedLLMs:
         )
 
         # If model is a string, pass it to create_watermarked_llm to create the LLM
-        # If model is already an LLM instance, we need to create a new one (can't modify existing)
-        if isinstance(model, str):
-            watermarked_llm = create_watermarked_llm(
-                model=model,
-                watermark_generator=generator,
-                debug=debug,
-                **vllm_kwargs,
-            )
-        else:
-            # If passed an existing LLM, we need to create a new one with same config
-            # Extract model name from the existing LLM
-            if hasattr(model, "model_config") and hasattr(model.model_config, "model"):
-                model_name = model.model_config.model
-            else:
-                raise ValueError("Cannot extract model name from existing LLM instance")
+        # Only support LLM objects
+        from vllm import LLM
 
-            watermarked_llm = create_watermarked_llm(
-                model=model_name,
-                watermark_generator=generator,
-                debug=debug,
-                **vllm_kwargs,
+        if not isinstance(model, LLM):
+            raise ValueError(
+                f"Expected vLLM LLM instance, got {type(model)}. "
+                "Please create an LLM object first and pass it to the factory."
             )
+
+        if vllm_kwargs:
+            logger.warning(
+                f"LLM instance provided, ignoring vllm_kwargs: {vllm_kwargs}"
+            )
+
+        watermarked_llm = create_watermarked_llm(
+            llm=model,
+            watermark_generator=generator,
+            debug=debug,
+        )
 
         logger.info("Successfully created watermarked LLM")
         return watermarked_llm

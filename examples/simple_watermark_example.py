@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 os.environ["VLLM_USE_V1"] = "1"  # Use V1 for better performance
 os.environ["VLLM_ENABLE_V1_MULTIPROCESSING"] = "0"  # Required for watermarking
 
-from vllm import SamplingParams
+from vllm import LLM, SamplingParams
 
 from vllm_watermark.core import DetectionAlgorithm, WatermarkingAlgorithm
 from vllm_watermark.simple_watermark import create_watermarked_llm
@@ -39,13 +39,20 @@ def test_openai_watermark():
 
     print(f"Created generator: {type(generator).__name__}")
 
-    # Create watermarked LLM
-    watermarked_llm = create_watermarked_llm(
+    # Create base LLM first
+    llm = LLM(
         model=model_name,
-        watermark_generator=generator,
-        debug=True,  # Enable debug to see sampler replacement structure
         enforce_eager=True,
         max_model_len=1024,
+    )
+
+    print("Created base LLM")
+
+    # Create watermarked LLM
+    watermarked_llm = create_watermarked_llm(
+        llm=llm,
+        watermark_generator=generator,
+        debug=False,  # Enable debug to see sampler replacement structure
     )
 
     print("Created watermarked LLM")

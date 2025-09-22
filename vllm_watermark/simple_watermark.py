@@ -524,34 +524,33 @@ class WatermarkedLLM:
 
     def __init__(
         self,
-        model: str,
+        llm,
         watermark_generator: WmGenerator,
         debug: bool = False,
-        **llm_kwargs,
     ):
         """
         Create a watermarked LLM.
 
         Args:
-            model: Model name or path
+            llm: vLLM LLM instance to add watermarking to
             watermark_generator: Watermark generator to use
             debug: Enable debug logging
-            **llm_kwargs: Arguments for vLLM LLM
         """
+        from vllm import LLM
+
+        if not isinstance(llm, LLM):
+            raise ValueError(f"Expected vLLM LLM instance, got {type(llm)}")
+
+        self.llm = llm
         self.watermark_generator = watermark_generator
         self.debug = debug
-
-        # Force eager execution for simpler debugging
-        llm_kwargs.setdefault("enforce_eager", True)
-
-        # Create the base LLM
-        self.llm = LLM(model=model, **llm_kwargs)
 
         # Replace the sampler with our watermark sampler
         self._replace_sampler()
 
         if self.debug:
-            logger.info(f"Created WatermarkedLLM with model: {model}")
+            model_name = getattr(llm, "model_name", "unknown")
+            logger.info(f"Created WatermarkedLLM with model: {model_name}")
 
     def _replace_sampler(self):
         """Replace vLLM's sampler with our watermark sampler."""
@@ -714,27 +713,28 @@ class WatermarkedLLM:
 
 
 def create_watermarked_llm(
-    model: str, watermark_generator: WmGenerator, debug: bool = False, **llm_kwargs
+    llm, watermark_generator: WmGenerator, debug: bool = False
 ) -> WatermarkedLLM:
     """
     Create a watermarked LLM using a clean sampler override approach.
 
     Args:
-        model: Model name or path
+        llm: vLLM LLM instance to add watermarking to
         watermark_generator: Watermark generator instance
         debug: Enable debug logging
-        **llm_kwargs: Additional arguments for vLLM LLM constructor
 
     Returns:
         WatermarkedLLM instance with watermarking capabilities
 
     Raises:
-        ValueError: If model or watermark_generator is invalid
+        ValueError: If llm or watermark_generator is invalid
         RuntimeError: If watermark injection fails
     """
+    from vllm import LLM
+
     # Input validation
-    if not isinstance(model, str) or not model.strip():
-        raise ValueError("Model must be a non-empty string")
+    if not isinstance(llm, LLM):
+        raise ValueError(f"Expected vLLM LLM instance, got {type(llm)}")
 
     if watermark_generator is None:
         raise ValueError("Watermark generator cannot be None")
@@ -744,10 +744,9 @@ def create_watermarked_llm(
 
     try:
         return WatermarkedLLM(
-            model=model,
+            llm=llm,
             watermark_generator=watermark_generator,
             debug=debug,
-            **llm_kwargs,
         )
     except Exception as e:
         logger.error(f"Failed to create watermarked LLM: {e}")
