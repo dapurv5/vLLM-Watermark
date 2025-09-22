@@ -103,11 +103,11 @@ If you use vLLM-Watermark in your research, please cite:
 
 ```bibtex
 @software{vllm_watermark,
-  title={vLLM-Watermark: A Python package for implementing various watermarking algorithms in vLLM},
-  author={Apurv Verma},
-  year={2025},
-  url={https://github.com/dapurv5/vLLM-Watermark}
+  title  = {vLLM-Watermark: A tiny, hackable research framework for
+            LLM watermarking experiments},
+  author = {Apurv Verma},
+  year   = {2025},
+  url    = {https://github.com/dapurv5/vLLM-Watermark}
 }
 ```
-
 ---
