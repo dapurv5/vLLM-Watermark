@@ -78,9 +78,8 @@ class WatermarkSampler(BaseSampler):
                     sampled_token_ids=sampled_tokens, logprobs_tensors=None
                 )
             else:
-                # For V0, we'd need a more complex SamplerOutput construction
-                # but for now we'll fall back to parent sampler
-                return super().forward(watermarked_logits, sampling_metadata)
+                # For V0, construct the more complex SamplerOutput
+                return self._create_v0_sampler_output(sampled_tokens, sampling_metadata)
         else:
             # No watermarking applied, use parent sampler
             return super().forward(watermarked_logits, sampling_metadata)
@@ -165,6 +164,40 @@ class WatermarkSampler(BaseSampler):
         except Exception as e:
             logger.error(f"Error in watermarking: {e}")
             return logits, None
+
+    def _create_v0_sampler_output(
+        self, sampled_tokens: torch.Tensor, sampling_metadata: SamplingMetadata
+    ) -> SamplerOutput:
+        """Create a V0 SamplerOutput with the watermarked tokens."""
+        # Import V0-specific classes
+        from vllm.sequence import CompletionSequenceGroupOutput, Logprob, SequenceOutput
+
+        outputs = []
+        batch_size = sampled_tokens.shape[0]
+
+        # Create outputs for each sequence group
+        for i in range(batch_size):
+            token_id = sampled_tokens[i, 0].item()  # Extract scalar token ID
+
+            # Create minimal logprobs (we don't have the actual logprobs from watermark generator)
+            logprobs = {token_id: Logprob(logprob=0.0, rank=None, decoded_token=None)}
+
+            # Create SequenceOutput
+            seq_output = SequenceOutput(
+                parent_seq_id=i,  # Use index as sequence ID
+                output_token=token_id,
+                logprobs=logprobs,
+            )
+
+            # Create CompletionSequenceGroupOutput
+            group_output = CompletionSequenceGroupOutput(
+                samples=[seq_output], prompt_logprobs=None
+            )
+
+            outputs.append(group_output)
+
+        # Create SamplerOutput with the constructed outputs and token tensor
+        return SamplerOutput(outputs=outputs, sampled_token_ids=sampled_tokens)
 
     def _extract_sampling_params(
         self, sampling_metadata: SamplingMetadata
