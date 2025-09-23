@@ -2,61 +2,84 @@
    :width: 120px
    :align: center
 
-Welcome to vLLM-Watermark's documentation!
-==========================================
+vLLM-Watermark
+============================
 
-vLLM-Watermark is a Python package for implementing various watermarking algorithms for LLM outputs, with support for different backends including vLLM and SGLang.
+Tiny. Hackable. Lightning-fast watermarking for researchers built on vLLM
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Getting started
 
    installation
-   api
-   examples
-   mathematical_foundations
-   contributing
 
-Installation
-------------
+.. toctree::
+   :maxdepth: 1
+   :caption: Performance evaluation
 
-You can install vLLM-Watermark using pip:
+   benchmark
 
-.. code-block:: bash
+.. toctree::
+   :maxdepth: 1
+   :caption: Watermarking algorithms
 
-   pip install vllm-watermark
+   algorithms/openai
+   algorithms/maryland
+   algorithms/pf
 
-For development installation:
+Supported Algorithms
+--------------------
 
-.. code-block:: bash
+The following table summarizes the three main watermarking algorithms implemented in this package:
 
-   git clone https://github.com/dapurv5/vLLM-Watermark.git
-   cd vllm-watermark
-   pip install -e ".[dev]"
+.. list-table::
+   :header-rows: 1
+   :class: algorithm-comparison
 
-Quick Start
+   * - Algorithm
+     - Description
+     - Paper
+   * - **Gumbel/OpenAI**
+     - Uses Gumbel-Max trick for deterministic sampling
+     - `Aaronson (2023) <https://scottaaronson.blog/?p=6823>`_
+   * - **KGW/Maryland**
+     - Green-red token partitioning with logit bias
+     - `Kirchenbauer et al. (2023) <https://arxiv.org/pdf/2301.10226>`_
+   * - **PF (Permute-and-Flip)**
+     - Prefix-free coding with token permutations
+     - `Lean et al. (2024) <https://arxiv.org/abs/2402.05864>`_
+
+.. note::
+   Each algorithm has different trade-offs between detectability, robustness, and text quality. See individual algorithm pages for detailed theory and examples.
+
+Quick start
 -----------
 
-Here's a quick example of how to use vLLM-Watermark:
+1. Install the package (see :doc:`installation`)
+2. Choose an algorithm from :doc:`algorithms/index`
+3. Run the example code to try it locally
 
-.. code-block:: python
+For detailed API information, refer to the docstrings in the repository code.
 
-   from vllm_watermark import WatermarkGenerator, WatermarkDetector
+Citation
+--------
 
-   # Create a watermarking algorithm instance
-   llm = LLM(model="meta-llama/Llama-3.2-1B") # vLLM model
-   wm_llm = WatermarkGenerator.create(llm, "kgw", gamma=0.5, delta=2.0)
+If you use vLLM-Watermark in your research, please cite:
 
-   # Apply watermarking while generating
-   watermarked_logits = wm_llm.generate(prompt)
+.. raw:: html
 
-   kgw_detector = WatermarkDetector.create("kgw", gamma=0.5, delta=2.0)
-   # Detect watermark in text
-   result = kgw_detector.detect(watermarked_logits)
+   <div class="citation-box">
 
-Indices and tables
-==================
+.. code-block:: bibtex
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   @software{vllm_watermark,
+     title  = {vLLM-Watermark: A tiny, hackable research framework for
+               LLM watermarking experiments},
+     author = {Apurv Verma},
+     year   = {2025},
+     url    = {https://github.com/dapurv5/vLLM-Watermark}
+   }
+
+.. raw:: html
+
+   </div>

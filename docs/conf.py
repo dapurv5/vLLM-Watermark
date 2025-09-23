@@ -59,21 +59,16 @@ html_theme = "sphinx_rtd_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "navigation_depth": 4,
+    "navigation_depth": 4,  # Show nested levels
     "titles_only": False,
-    "collapse_navigation": False,
+    "collapse_navigation": True,  # Allow collapsing like UvA
     "sticky_navigation": True,
     "includehidden": True,
     "logo_only": False,
-    "display_version": True,
     "prev_next_buttons_location": "bottom",
     "style_external_links": False,
     "vcs_pageview_mode": "blob",
-    "style_nav_header_background": "#2980B9",
-    # Toc options
-    "canonical_url": "https://vermaapurv.com/vLLM-Watermark/",
-    "analytics_id": "",  #  Provide your Google Analytics ID
-    "analytics_anonymize_ip": False,
+    "style_nav_header_background": "#437eb4",  # Exact UvA blue (R=67, G=126, B=180)
 }
 
 # Base URL for the HTML pages.
@@ -87,7 +82,7 @@ html_static_path = ["_static"]
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = "../resources/vLLM-WM-Logo.png"
+# html_logo = "../resources/vLLM-WM-Logo.png"  # Disabled - logo only on index page
 
 # The name of an image file (relative to this directory) to use as a favicon of
 # the docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -187,3 +182,4 @@ myst_enable_extensions = [
 
 def setup(app):
     app.add_css_file("custom.css")
+    app.add_js_file("custom.js")

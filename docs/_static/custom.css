@@ -1,216 +1,88 @@
-/* Custom CSS for vLLM-Watermark documentation */
-
-/* Improve typography */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    line-height: 1.6;
-}
-
-/* Better code block styling */
-.highlight {
-    background-color: #f8f9fa;
-    border-radius: 4px;
-    padding: 1em;
-    margin: 1em 0;
-}
-
-/* Improve table styling */
-.wy-table-responsive table td, .wy-table-responsive table th {
-    white-space: normal;
-    padding: 8px 12px;
-}
-
-/* Better math equation styling */
-.math {
-    text-align: center;
-    margin: 1em 0;
-}
-
-/* Improve admonition styling */
-.admonition {
-    border-radius: 4px;
-    margin: 1em 0;
-}
-
-.admonition-title {
-    font-weight: 600;
-}
-
-/* Better navigation */
-.wy-nav-side {
-    background: #343131;
-}
-
+/* ---- Sidebar link base (remove underlines) ---- */
 .wy-nav-side .wy-menu-vertical a {
-    color: #b3b3b3;
+  color:#e2e2e2;
+  padding:4px 18px;
+  font-size:13.4px;
+  line-height:1.4;
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  position:relative;
+  font-weight:400;
+  text-decoration:none !important;
 }
 
-.wy-nav-side .wy-menu-vertical a:hover {
-    background-color: #404040;
-    color: #ffffff;
+/* Target the correct toctree level classes for subheadings - make them black for readability */
+.wy-nav-side .wy-menu-vertical li.toctree-l2 a,
+.wy-nav-side .wy-menu-vertical li.toctree-l3 a,
+.wy-nav-side .wy-menu-vertical li.toctree-l4 a {
+  color:#000000 !important;
+  font-weight:500 !important;
+  text-decoration:none !important;
 }
 
-/* Improve header styling */
+.wy-nav-side .wy-menu-vertical li.toctree-l2 a:hover,
+.wy-nav-side .wy-menu-vertical li.toctree-l3 a:hover,
+.wy-nav-side .wy-menu-vertical li.toctree-l4 a:hover {
+  color:#333333 !important;
+}
+
+/* Remove underline on any "current" link states */
+.wy-nav-side .wy-menu-vertical a.current,
+.wy-nav-side .wy-menu-vertical li.current > a {
+  text-decoration:none !important;
+  border:0 !important;
+}
+
+/* Ensure deeper nesting levels are also black and readable */
+.wy-nav-side .wy-menu-vertical li.toctree-l5 a,
+.wy-nav-side .wy-menu-vertical li.toctree-l6 a {
+  color:#000000 !important;
+  font-weight:400 !important;
+}
+
+/* ---- Layout: Fix gap between sidebar and content ---- */
+
+/* Keep sidebar at default 300px width to match theme expectations */
+.wy-nav-side {
+  width:300px !important;
+  background:#343131 !important;
+  color:#9b9b9b !important;
+}
+
+/* Content wrapper positioning - use theme default 300px margin */
 .wy-nav-content-wrap {
-    background: #ffffff;
+  margin-left:300px !important;
+  background:#fcfcfc !important;
+  min-height:100% !important;
 }
 
-/* Better link styling */
-a {
-    color: #2980b9;
-}
-
-a:hover {
-    color: #3498db;
-}
-
-/* Improve code inline styling */
-code {
-    background-color: #f1f1f1;
-    padding: 2px 4px;
-    border-radius: 3px;
-    font-size: 0.9em;
-}
-
-/* Better parameter styling */
-.field-list dt {
-    font-weight: 600;
-    color: #2c3e50;
-}
-
-.field-list dd {
-    margin-left: 1em;
-    margin-bottom: 0.5em;
-}
-
-/* Improve function signature styling */
-.sig {
-    background-color: #f8f9fa;
-    padding: 0.5em;
-    border-radius: 4px;
-    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-}
-
-/* Better section header styling */
-.section h1, .section h2, .section h3 {
-    color: #2c3e50;
-    border-bottom: 2px solid #ecf0f1;
-    padding-bottom: 0.3em;
-}
-
-/* Improve logo styling */
-.wy-side-nav-search .wy-dropdown > a img.logo, .wy-side-nav-search > a img.logo {
-    width: 200px;
-    height: auto;
-    max-width: 100%;
-}
-
-/* Better mobile responsiveness */
-@media (max-width: 768px) {
-    .wy-nav-content {
-        padding: 1em;
-    }
-
-    .wy-table-responsive {
-        overflow-x: auto;
-    }
-}
-
-/* Improve search styling */
-.wy-side-nav-search input[type="text"] {
-    border-radius: 4px;
-    border: 1px solid #ddd;
-}
-
-/* Better footer styling */
+/* Content container - prevent overlap and expand width */
 .wy-nav-content {
-    max-width: 1200px;
+  padding:1.618em 2em !important;
+  max-width:none !important;
+  margin:0 !important;
 }
 
-/* Improve code example styling */
-.literal-block {
-    background-color: #f8f9fa;
-    border: 1px solid #e9ecef;
-    border-radius: 4px;
-    padding: 1em;
-    margin: 1em 0;
-    overflow-x: auto;
+/* On very wide screens allow full width */
+@media (min-width:1600px){
+  .wy-nav-content .rst-content,
+  .rst-content .document,
+  .wy-nav-content .rst-content > .document > div[itemprop="articleBody"] {
+    max-width:none !important;
+  }
 }
 
-/* Better list styling */
-.wy-plain-list-decimal, article ul {
-    padding-left: 2em;
-}
-
-.wy-plain-list-decimal li, article ul li {
-    margin-bottom: 0.5em;
-}
-
-/* Improve sidebar styling */
-.wy-menu-vertical li.current > a {
-    background-color: #404040;
-    color: #ffffff;
-}
-
-.wy-menu-vertical li.current > a:hover {
-    background-color: #505050;
-}
-
-/* Better version selector styling */
-.rst-versions {
-    background-color: #343131;
-}
-
-.rst-versions .rst-current-version {
-    background-color: #404040;
-}
-
-/* Improve math equation spacing */
-.math {
-    margin: 1.5em 0;
-}
-
-/* Better parameter table styling */
-.field-list table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.field-list table td {
-    vertical-align: top;
-    padding: 0.5em;
-}
-
-.field-list table td:first-child {
-    font-weight: 600;
-    color: #2c3e50;
-    width: 30%;
-}
-
-/* Improve warning and note styling */
-.warning, .note, .tip, .important {
-    border-left: 4px solid;
-    padding: 1em;
-    margin: 1em 0;
-    border-radius: 0 4px 4px 0;
-}
-
-.warning {
-    border-left-color: #f39c12;
-    background-color: #fef9e7;
-}
-
-.note {
-    border-left-color: #3498db;
-    background-color: #ebf3fd;
-}
-
-.tip {
-    border-left-color: #27ae60;
-    background-color: #e8f5e8;
-}
-
-.important {
-    border-left-color: #e74c3c;
-    background-color: #fdf2f2;
+/* Narrow screens: fall back to full width */
+@media (max-width:1000px){
+  .wy-nav-content-wrap { margin-left:0 !important; }
+  .wy-nav-content {
+    padding:1.2rem 1.2rem 3rem 0rem !important;
+  }
+  .wy-nav-content .rst-content,
+  .rst-content .document,
+  .wy-nav-content .rst-content > .document > div[itemprop="articleBody"] {
+    width:100%;
+    max-width:none;
+  }
 }

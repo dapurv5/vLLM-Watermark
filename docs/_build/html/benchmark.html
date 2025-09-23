@@ -1,0 +1,215 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Performance Benchmarking &mdash; vLLM-Watermark 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=6d31743f" />
+
+  
+    <link rel="shortcut icon" href="_static/vLLM-WM-Logo.png"/>
+    <link rel="canonical" href="/vLLM-Watermark/benchmark.html" />
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/custom.js?v=be80de33"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="OpenAI/Gumbel Watermarking" href="algorithms/openai.html" />
+    <link rel="prev" title="Installation Guide" href="installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #437eb4" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            vLLM-Watermark
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performance evaluation</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Performance Benchmarking</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#quick-start">Quick Start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#supported-algorithms">Supported Algorithms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#usage-examples">Usage Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#output-metrics">Output Metrics</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Watermarking algorithms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/openai.html">OpenAI/Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/maryland.html">KGW (Maryland) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/pf.html">Permute-and-Flip (PF) Watermarking</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #437eb4" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">vLLM-Watermark</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Performance Benchmarking</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/benchmark.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="performance-benchmarking">
+<h1>Performance Benchmarking<a class="headerlink" href="#performance-benchmarking" title="Link to this heading"></a></h1>
+<p>Comprehensive benchmarking tool for evaluating watermarking algorithms performance on the C4 dataset. Uses isolated processes to ensure complete GPU memory cleanup between algorithms.</p>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading"></a></h2>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Install required dependencies</span>
+pip<span class="w"> </span>install<span class="w"> </span>tabulate
+
+<span class="c1"># From project root directory</span>
+./scripts/benchmark/run_benchmark.sh
+</pre></div>
+</div>
+</section>
+<section id="supported-algorithms">
+<h2>Supported Algorithms<a class="headerlink" href="#supported-algorithms" title="Link to this heading"></a></h2>
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Algorithm</p></th>
+<th class="head"><p>Parameters</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>OPENAI</strong></p></td>
+<td><p>ngram, seed, payload</p></td>
+<td><p>Power-law transformation with n-gram hashing</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>MARYLAND</strong></p></td>
+<td><p>ngram, seed, gamma, delta</p></td>
+<td><p>Statistical watermarking with hypothesis testing</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>MARYLAND_L</strong></p></td>
+<td><p>ngram, seed, gamma, delta</p></td>
+<td><p>Maryland algorithm with logit processing</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>PF</strong></p></td>
+<td><p>ngram, seed, payload</p></td>
+<td><p>Prefix-free coding watermarking</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="usage-examples">
+<h2>Usage Examples<a class="headerlink" href="#usage-examples" title="Link to this heading"></a></h2>
+<p><strong>Shell Script (Recommended):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># Default: All algorithms, 5000 samples, meta-llama/Llama-3.2-1B</span>
+./scripts/benchmark/run_benchmark.sh
+
+<span class="c1"># Custom model</span>
+./scripts/benchmark/run_benchmark.sh<span class="w"> </span>meta-llama/Llama-3.2-3B
+
+<span class="c1"># Specific algorithms</span>
+./scripts/benchmark/run_benchmark.sh<span class="w"> </span>meta-llama/Llama-3.2-1B<span class="w"> </span><span class="s2">&quot;OPENAI MARYLAND&quot;</span>
+
+<span class="c1"># Custom sample count</span>
+./scripts/benchmark/run_benchmark.sh<span class="w"> </span>meta-llama/Llama-3.2-1B<span class="w"> </span><span class="s2">&quot;OPENAI PF&quot;</span><span class="w"> </span><span class="m">1000</span>
+</pre></div>
+</div>
+<p><strong>Python Script (Advanced):</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/benchmark/benchmark_watermarks.py<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--model_name<span class="w"> </span>meta-llama/Llama-3.2-1B<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--algorithms<span class="w"> </span>OPENAI<span class="w"> </span>MARYLAND<span class="w"> </span>PF<span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--num_samples<span class="w"> </span><span class="m">5000</span><span class="w"> </span><span class="se">\</span>
+<span class="w">    </span>--data_path<span class="w"> </span>resources/datasets/c4/processed_c4.jsonl
+</pre></div>
+</div>
+</section>
+<section id="output-metrics">
+<h2>Output Metrics<a class="headerlink" href="#output-metrics" title="Link to this heading"></a></h2>
+<p>The benchmark provides comprehensive metrics for each algorithm:</p>
+<p><strong>Detection Performance:</strong>
+- Precision: TP / (TP + FP)
+- Recall: TP / (TP + FN)
+- F1 Score: 2 × (Precision × Recall) / (Precision + Recall)
+- Accuracy: (TP + TN) / (TP + TN + FP + FN)
+- FPR: False Positive Rate = FP / (FP + TN)
+- FNR: False Negative Rate = FN / (TP + FN)</p>
+<p><strong>Performance Metrics:</strong>
+- Input Tokens/Second: Throughput for input processing
+- Output Tokens/Second: Throughput for text generation
+- Generation Time: Time spent generating watermarked + unwatermarked text
+- Detection Time: Time spent running detection
+- Total Time: Generation + Detection time</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Results are saved to the <code class="docutils literal notranslate"><span class="pre">output/benchmark/</span></code> directory with detailed configuration parameters for reproducibility.</p>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="algorithms/openai.html" class="btn btn-neutral float-right" title="OpenAI/Gumbel Watermarking" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Apurv Verma.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
