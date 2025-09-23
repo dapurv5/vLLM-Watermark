@@ -29,6 +29,11 @@ document.addEventListener('DOMContentLoaded', function(){
       toggle.setAttribute('aria-expanded','true');
     }
 
+    // Hide toggle for items that are currently selected (no need to expand/collapse current page)
+    if(li.querySelector(':scope > a.current')){
+      toggle.style.display = 'none';
+    }
+
     function toggleOpen(ev){
       ev.stopPropagation();
       ev.preventDefault();

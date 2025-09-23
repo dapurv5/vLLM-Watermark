@@ -86,3 +86,29 @@
     max-width:none;
   }
 }
+
+/* ---- Navigation toggle styling ---- */
+
+/* Style the custom navigation toggles */
+.nav-toggle {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  line-height: 16px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #666 !important;
+  margin-right: 8px;
+  user-select: none;
+}
+
+.nav-toggle:hover {
+  color: #333 !important;
+}
+
+/* Hide toggle for current page items */
+.wy-menu-vertical li.current > a .nav-toggle {
+  display: none !important;
+}
