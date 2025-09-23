@@ -73,7 +73,7 @@ The benchmark provides comprehensive metrics for each algorithm:
 **Detection Performance:**
 
 * **Precision:** TP / (TP + FP)
-* **Recall:** TP / (TP + FN)  
+* **Recall:** TP / (TP + FN)
 * **F1 Score:** 2 × (Precision × Recall) / (Precision + Recall)
 * **Accuracy:** (TP + TN) / (TP + TN + FP + FN)
 * **FPR:** False Positive Rate = FP / (FP + TN)

@@ -4,8 +4,8 @@ document.addEventListener('DOMContentLoaded', function(){
   const menuRoot = document.querySelector('.wy-nav-side .wy-menu-vertical');
   if(!menuRoot) return;
 
-  // Identify li elements that contain a nested UL.
-  const parents = Array.from(menuRoot.querySelectorAll('li')).filter(li => li.querySelector(':scope > ul'));
+  // Identify li elements that contain a nested UL, but only in toctree navigation
+  const parents = Array.from(menuRoot.querySelectorAll('li.toctree-l1, li.toctree-l2, li.toctree-l3')).filter(li => li.querySelector(':scope > ul'));
   parents.forEach(li => {
     li.classList.add('has-children');
     // If anchor already has pseudo plus/minus we switch to a real element.
