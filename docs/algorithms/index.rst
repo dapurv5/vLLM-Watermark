@@ -7,5 +7,6 @@ This section describes each implemented watermarking algorithm with theoretical 
    :maxdepth: 1
 
    openai
+   openai_dr
    maryland
    pf

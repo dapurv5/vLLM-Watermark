@@ -24,6 +24,7 @@ Tiny. Hackable. Lightning-fast watermarking for researchers built on vLLM
    :caption: Watermarking algorithms
 
    algorithms/openai
+   algorithms/openai_dr
    algorithms/maryland
    algorithms/pf
 

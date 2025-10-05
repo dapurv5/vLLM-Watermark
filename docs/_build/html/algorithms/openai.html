@@ -25,7 +25,7 @@
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="KGW (Maryland) Watermarking" href="maryland.html" />
+    <link rel="next" title="Randomized Gumbel Watermarking" href="openai_dr.html" />
     <link rel="prev" title="Performance Benchmarking" href="../benchmark.html" /> 
 </head>
 
@@ -59,12 +59,22 @@
 <p class="caption" role="heading"><span class="caption-text">Watermarking algorithms</span></p>
 <ul class="current">
 <li class="toctree-l1 current"><a class="current reference internal" href="#">OpenAI/Gumbel Watermarking</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#theory">Theory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#theory">Theory</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-classical-gumbel-max-formulation">The Classical Gumbel-Max Formulation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#implementation-via-an-equivalent-form">Implementation via an Equivalent Form</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#mathematical-proof-of-equivalence">Mathematical Proof of Equivalence</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#implementation-details">Implementation Details</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#interpretation">Interpretation</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detection">Detection</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#paper-reference">Paper reference</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#example-code">Example code</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#notes">Notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">See Also</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="openai_dr.html">Randomized Gumbel Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="maryland.html">KGW (Maryland) Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="pf.html">Permute-and-Flip (PF) Watermarking</a></li>
 </ul>
@@ -107,18 +117,78 @@
 </div><section id="theory">
 <h2>Theory<a class="headerlink" href="#theory" title="Link to this heading"></a></h2>
 <p>The Gumbel watermark uses the Gumbel-Max trick for deterministic token selection by hashing the preceding <span class="math notranslate nohighlight">\(h\)</span> tokens with a key <span class="math notranslate nohighlight">\(k\)</span> to generate scores <span class="math notranslate nohighlight">\(r_t\)</span> for each token in the vocabulary at timestep <span class="math notranslate nohighlight">\(t\)</span>.</p>
-<p>Token selection uses:</p>
+<section id="the-classical-gumbel-max-formulation">
+<h3>The Classical Gumbel-Max Formulation<a class="headerlink" href="#the-classical-gumbel-max-formulation" title="Link to this heading"></a></h3>
+<p>In its classical form, the Gumbel-Max trick samples tokens according to:</p>
 <div class="math notranslate nohighlight">
-\[\text{arg max}_{x_t \in V} \left[ \log P(x_t|x_{&lt;t}) - \log(-\log(r_{x_t})) \right]\]</div>
+\[x_t^* = \text{arg max}_{v \in V} \left[ \log p_v + G_v \right]\]</div>
+<p>where <span class="math notranslate nohighlight">\(p_v\)</span> is the probability of token <span class="math notranslate nohighlight">\(v\)</span> from the language model, and <span class="math notranslate nohighlight">\(G_v \sim \text{Gumbel}(0, 1)\)</span> are i.i.d. Gumbel-distributed random variables.</p>
+<p>For watermarking, we replace the random Gumbel noise with <strong>deterministic</strong> pseudo-random values generated from a hash of the context. Using uniform random variables <span class="math notranslate nohighlight">\(u_v \sim \text{Uniform}([0, 1])\)</span>, we can generate Gumbel noise via the transformation <span class="math notranslate nohighlight">\(G_v = -\log(-\log(u_v))\)</span>. This gives us:</p>
+<div class="math notranslate nohighlight">
+\[x_t^* = \text{arg max}_{v \in V} \left[ \log p_v - \log(-\log(u_v)) \right]\]</div>
+</section>
+<section id="implementation-via-an-equivalent-form">
+<h3>Implementation via an Equivalent Form<a class="headerlink" href="#implementation-via-an-equivalent-form" title="Link to this heading"></a></h3>
+<p>The expression above can be simplified. Note that it is mathematically equivalent to:</p>
+<div class="math notranslate nohighlight">
+\[x_t^* = \text{arg max}_{v \in V} \left[ u_v^{1/p_v} \right]\]</div>
+<p>This is what the implementation uses. We prove the equivalence below.</p>
+</section>
+<section id="mathematical-proof-of-equivalence">
+<h3>Mathematical Proof of Equivalence<a class="headerlink" href="#mathematical-proof-of-equivalence" title="Link to this heading"></a></h3>
+<p>Starting with the Gumbel-Max formulation:</p>
+<div class="math notranslate nohighlight">
+\[\text{arg max}_v \left[ \log(p_v) - \log(-\log(u_v)) \right]\]</div>
+<p>We can manipulate this step by step:</p>
+<div class="math notranslate nohighlight">
+\[\begin{split}&amp;= \text{arg max}_v \left[ \log(p_v) - \log(-\log(u_v)) \right] \\
+&amp;= \text{arg max}_v \left[ \log \left( \frac{p_v}{-\log(u_v)} \right) \right] \quad \text{(log subtraction)} \\
+&amp;= \text{arg max}_v \left[ \exp \left( \log \left( \frac{p_v}{-\log(u_v)} \right) \right) \right] \quad \text{(exp preserves argmax)} \\
+&amp;= \text{arg max}_v \left[ p_v \cdot \frac{1}{-\log(u_v)} \right] \\
+&amp;= \text{arg max}_v \left[ p_v \cdot \exp(-\log(-\log(u_v))) \right] \\
+&amp;= \text{arg min}_v \left[ \frac{-\log(u_v)}{p_v} \right] \quad \text{(minimizing denominator)} \\
+&amp;= \text{arg max}_v \left[ \frac{\log(u_v)}{p_v} \right] \quad \text{(flip sign, flip min/max)} \\
+&amp;= \text{arg max}_v \left[ \log(u_v^{1/p_v}) \right] \\
+&amp;= \text{arg max}_v \left[ u_v^{1/p_v} \right] \quad \text{(log is monotonic)}\end{split}\]</div>
+<p>Therefore, computing <span class="math notranslate nohighlight">\(\text{arg max}_v [u_v^{1/p_v}]\)</span> is equivalent to the Gumbel-Max trick. This simplification has several advantages:</p>
+<ol class="arabic simple">
+<li><p><strong>Computational Efficiency:</strong> Avoids nested logarithms</p></li>
+<li><p><strong>Numerical Stability:</strong> The form <span class="math notranslate nohighlight">\(u^{1/p}\)</span> is more stable than <span class="math notranslate nohighlight">\(-\log(-\log(u))\)</span></p></li>
+<li><p><strong>Implementation Simplicity:</strong> Fewer operations and clearer code</p></li>
+</ol>
+</section>
+<section id="implementation-details">
+<h3>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading"></a></h3>
+<p>The algorithm proceeds as follows:</p>
+<ol class="arabic simple">
+<li><p><strong>Generate deterministic random values:</strong> Hash the previous <span class="math notranslate nohighlight">\(h\)</span> tokens to obtain a seed, then generate <span class="math notranslate nohighlight">\(|V|\)</span> uniform random values <span class="math notranslate nohighlight">\(\{u_v\}\)</span></p></li>
+<li><p><strong>Apply nucleus (top-p) sampling:</strong> Filter to keep only the top-p probability mass</p></li>
+<li><p><strong>Compute the transformed scores:</strong> For each token <span class="math notranslate nohighlight">\(v\)</span> in the filtered vocabulary, compute <span class="math notranslate nohighlight">\(u_v^{1/p_v}\)</span></p></li>
+<li><p><strong>Token selection:</strong> Choose <span class="math notranslate nohighlight">\(\text{arg max}_v [u_v^{1/p_v}]\)</span></p></li>
+</ol>
+<p>This preserves the original sampling distribution while ensuring deterministic outputs.</p>
+</section>
+<section id="interpretation">
+<h3>Interpretation<a class="headerlink" href="#interpretation" title="Link to this heading"></a></h3>
+<p>The transformation <span class="math notranslate nohighlight">\(u_v^{1/p_v}\)</span> balances probability and randomness:</p>
+<ul class="simple">
+<li><p>For high-probability tokens (<span class="math notranslate nohighlight">\(p_v\)</span> large), <span class="math notranslate nohighlight">\(1/p_v\)</span> is small, so <span class="math notranslate nohighlight">\(u_v^{1/p_v}\)</span> remains close to <span class="math notranslate nohighlight">\(u_v\)</span></p></li>
+<li><p>For low-probability tokens (<span class="math notranslate nohighlight">\(p_v\)</span> small), <span class="math notranslate nohighlight">\(1/p_v\)</span> is large, so <span class="math notranslate nohighlight">\(u_v^{1/p_v}\)</span> can be significantly boosted if <span class="math notranslate nohighlight">\(u_v\)</span> is large</p></li>
+</ul>
+<p>High-probability tokens tend to win without needing large <span class="math notranslate nohighlight">\(u_v\)</span> values, but occasionally a lower-probability token with a favorable <span class="math notranslate nohighlight">\(u_v\)</span> can prevail. This reproduces sampling from the original distribution.</p>
+<p>The Gumbel-Max trick adds controlled randomness that, when combined with the true probabilities, produces samples from the correct distribution. The implementation achieves this without explicitly computing Gumbel random variables.</p>
+</section>
+<section id="detection">
+<h3>Detection<a class="headerlink" href="#detection" title="Link to this heading"></a></h3>
 <p>The detection score is computed as:</p>
 <div class="math notranslate nohighlight">
-\[\text{Score}(x) = \sum_{t=1}^{n} \log\left(\frac{1}{1 - r_{x_t}}\right)\]</div>
-<p>which follows a gamma distribution <span class="math notranslate nohighlight">\(\Gamma(n, 1)\)</span> under the watermark hypothesis.</p>
-<p>For random <span class="math notranslate nohighlight">\(r \sim \text{Uniform}([0, 1])^{|V|}\)</span>, the transformation <span class="math notranslate nohighlight">\(-\log(-\log(r))\)</span> follows a Gumbel(0,1) distribution. This enables distortion-free sampling when <span class="math notranslate nohighlight">\(h\)</span> is large, since adding Gumbel noise to log probabilities and taking argmax corresponds exactly to sampling from the original softmax distribution.</p>
+\[\text{Score}(x) = \sum_{t=1}^{n} \log\left(\frac{1}{1 - u_{x_t}}\right)\]</div>
+<p>which follows a gamma distribution <span class="math notranslate nohighlight">\(\Gamma(n, 1)\)</span> under the watermark hypothesis, enabling statistical detection.</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>This preserves the distribution while ensuring consistent output for fixed seeds, although at the cost of response diversity.</p>
+<p>This approach preserves the distribution while ensuring consistent output for fixed seeds, though it does reduce response diversity across different generations with the same context.</p>
 </div>
+</section>
 </section>
 <section id="paper-reference">
 <h2>Paper reference<a class="headerlink" href="#paper-reference" title="Link to this heading"></a></h2>
@@ -190,6 +260,10 @@
 <li><p>Trade-off between consistency and response diversity</p></li>
 </ul>
 </section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<p>For applications requiring enhanced output diversity, see <a class="reference internal" href="openai_dr.html"><span class="doc">Randomized Gumbel Watermarking</span></a> (Randomized Gumbel), which introduces controlled randomness at the cost of slight distortion.</p>
+</section>
 </section>
 
 
@@ -197,7 +271,7 @@
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="../benchmark.html" class="btn btn-neutral float-left" title="Performance Benchmarking" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="maryland.html" class="btn btn-neutral float-right" title="KGW (Maryland) Watermarking" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="openai_dr.html" class="btn btn-neutral float-right" title="Randomized Gumbel Watermarking" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>
