@@ -59,3 +59,4 @@ wheels/
 # Local development settings
 .env
 .env.local
+*.DS_Store

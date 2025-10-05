@@ -105,7 +105,7 @@ If you use vLLM-Watermark in your research, please cite:
 @software{vllm_watermark,
   title  = {vLLM-Watermark: A tiny, hackable research framework for
             LLM watermarking experiments},
-  author = {Apurv Verma},
+  author = {Verma, Apurv},
   year   = {2025},
   url    = {https://github.com/dapurv5/vLLM-Watermark}
 }
