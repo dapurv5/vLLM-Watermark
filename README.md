@@ -7,6 +7,7 @@
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
   [![Documentation](https://img.shields.io/badge/docs-sphinx-blue.svg)](https://vermaapurv.com/vLLM-Watermark/index.html)
+  [![Read More](https://img.shields.io/badge/read%20more-blog-purple?logo=readme&logoColor=white)](https://dapurv5.github.io/2025-10-04-vllm-watermark/)
 </div>
 
 ## Supported Algorithms
