@@ -4,6 +4,7 @@
   <p><strong>Tiny. Hackable. Lightning-fast watermarking for researchers built on vLLM</strong></p>
 
   <!-- [![PyPI version](https://badge.fury.io/py/vllm-watermark.svg)](https://badge.fury.io/py/vllm-watermark) -->
+  [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18068257.svg)](https://doi.org/10.5281/zenodo.18068257)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
   [![Documentation](https://img.shields.io/badge/docs-sphinx-blue.svg)](https://vermaapurv.com/vLLM-Watermark/index.html)
@@ -104,11 +105,14 @@ If you use vLLM-Watermark in your research, please cite:
 
 ```bibtex
 @software{vllm_watermark,
-  title  = {vLLM-Watermark: A tiny, hackable research framework for
-            LLM watermarking experiments},
-  author = {Verma, Apurv},
-  year   = {2025},
-  url    = {https://github.com/dapurv5/vLLM-Watermark}
+  title     = {vLLM-Watermark: A tiny, hackable research framework for
+               LLM watermarking experiments},
+  author    = {Verma, Apurv},
+  year      = {2025},
+  url       = {https://github.com/dapurv5/vLLM-Watermark},
+  doi       = {10.5281/zenodo.18068257},
+  publisher = {Zenodo},
+  version   = {v0.1.0}
 }
 ```
 ---
