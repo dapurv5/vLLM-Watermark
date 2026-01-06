@@ -625,74 +625,208 @@ class WatermarkedLLM:
             raise
 
     def _replace_samplers_in_executor(self, model_executor, watermark_sampler) -> int:
-        """Replace samplers in a model executor. Returns number of samplers replaced."""
-        count = 0
-
-        # Debug: Log the structure we're working with
+        """Replace samplers in a model executor. Returns number of samplers replaced.
+    
+        Works across different vLLM executor layouts by:
+          1) targeting common paths (fast path), and
+          2) falling back to a safe bounded object-graph walk.
+        """
+        logger = globals().get("logger", None)
+    
+        def _dbg(msg: str):
+            if self.debug and logger is not None:
+                logger.debug(msg)
+    
+        # --- Helpers -------------------------------------------------------------
+    
+        def _try_set_sampler(obj) -> int:
+            """Try to set sampler-like attributes on `obj`. Returns 1 if replaced, else 0."""
+            if obj is None:
+                return 0
+    
+            # Common sampler attribute names seen across versions / refactors.
+            sampler_attr_candidates = ("sampler", "_sampler", "sampler_layer")
+    
+            for attr in sampler_attr_candidates:
+                if hasattr(obj, attr):
+                    try:
+                        old = getattr(obj, attr)
+                        # Skip if it's already the watermark sampler
+                        if old is watermark_sampler:
+                            return 0
+                        setattr(obj, attr, watermark_sampler)
+                        _dbg(
+                            f"Replaced {type(obj).__name__}.{attr}: "
+                            f"{type(old).__name__} -> {type(watermark_sampler).__name__}"
+                        )
+                        return 1
+                    except Exception as e:
+                        _dbg(
+                            f"Failed replacing {type(obj).__name__}.{attr}: {e!r}"
+                        )
+            return 0
+    
+        def _maybe_replace_on_runner(container) -> int:
+            """If `container` has a runner-like attribute, try to replace sampler on that runner."""
+            if container is None:
+                return 0
+    
+            # runner attribute names across vLLM versions/configs
+            runner_attr_candidates = ("model_runner", "_model_runner", "runner")
+    
+            for rattr in runner_attr_candidates:
+                if hasattr(container, rattr):
+                    runner = getattr(container, rattr, None)
+                    if runner is None:
+                        continue
+                    # Prefer replacing on runner itself.
+                    replaced = _try_set_sampler(runner)
+                    if replaced:
+                        return 1
+    
+                    # Some layouts tuck sampler one level deeper.
+                    # e.g., runner.model_runner.sampler (rare, but cheap to try)
+                    if hasattr(runner, "model_runner"):
+                        replaced = _try_set_sampler(getattr(runner, "model_runner", None))
+                        if replaced:
+                            return 1
+            return 0
+    
+        def _walk_object_graph(root, max_depth: int = 6):
+            """Yield objects reachable from `root` (bounded), avoiding cycles."""
+            seen = set()
+    
+            def push(obj, depth):
+                if obj is None:
+                    return
+                oid = id(obj)
+                if oid in seen:
+                    return
+                seen.add(oid)
+    
+                yield (obj, depth)
+    
+                if depth >= max_depth:
+                    return
+    
+                # Expand common containers
+                if isinstance(obj, dict):
+                    for v in obj.values():
+                        yield from push(v, depth + 1)
+                    return
+                if isinstance(obj, (list, tuple, set)):
+                    for v in obj:
+                        yield from push(v, depth + 1)
+                    return
+    
+                # Expand object attributes
+                try:
+                    d = getattr(obj, "__dict__", None)
+                except Exception:
+                    d = None
+    
+                if isinstance(d, dict):
+                    for v in d.values():
+                        # Skip obviously huge tensors/modules if you want; here we keep it generic.
+                        yield from push(v, depth + 1)
+    
+            yield from push(root, 0)
+    
+        # --- Debug introspection -------------------------------------------------
+    
         if self.debug:
-            logger.debug(f"Model executor type: {type(model_executor)}")
-            logger.debug(f"Model executor attributes: {dir(model_executor)}")
-            if hasattr(model_executor, "driver_worker"):
-                logger.debug(
-                    f"Driver worker type: {type(model_executor.driver_worker)}"
-                )
-                logger.debug(
-                    f"Driver worker attributes: {dir(model_executor.driver_worker)}"
-                )
-
-        # Check driver worker
-        if hasattr(model_executor, "driver_worker"):
-            if hasattr(model_executor.driver_worker, "model_runner"):
-                runner = model_executor.driver_worker.model_runner
-                if hasattr(runner, "sampler"):
-                    old_sampler = runner.sampler
-                    runner.sampler = watermark_sampler
-                    count += 1
-                    if self.debug:
-                        logger.debug(
-                            f"Replaced sampler in driver_worker: {type(old_sampler).__name__} -> WatermarkSampler"
-                        )
-
-            # V1 might have nested worker structure
-            if hasattr(model_executor.driver_worker, "worker") and hasattr(
-                model_executor.driver_worker.worker, "model_runner"
-            ):
-                runner = model_executor.driver_worker.worker.model_runner
-                if hasattr(runner, "sampler"):
-                    old_sampler = runner.sampler
-                    runner.sampler = watermark_sampler
-                    count += 1
-                    if self.debug:
-                        logger.debug(
-                            f"Replaced sampler in driver_worker.worker: {type(old_sampler).__name__} -> WatermarkSampler"
-                        )
-
-        # Check if model_executor itself has a model_runner (some configurations)
-        if hasattr(model_executor, "model_runner") and hasattr(
-            model_executor.model_runner, "sampler"
-        ):
-            old_sampler = model_executor.model_runner.sampler
-            model_executor.model_runner.sampler = watermark_sampler
-            count += 1
-            if self.debug:
-                logger.debug(
-                    f"Replaced sampler in model_executor: {type(old_sampler).__name__} -> WatermarkSampler"
-                )
-
-        # Check workers list (distributed case)
-        if hasattr(model_executor, "workers"):
-            for i, worker in enumerate(model_executor.workers):
-                if hasattr(worker, "model_runner") and hasattr(
-                    worker.model_runner, "sampler"
-                ):
-                    old_sampler = worker.model_runner.sampler
-                    worker.model_runner.sampler = watermark_sampler
-                    count += 1
-                    if self.debug:
-                        logger.debug(
-                            f"Replaced sampler in worker[{i}]: {type(old_sampler).__name__} -> WatermarkSampler"
-                        )
-
+            _dbg(f"Model executor type: {type(model_executor)}")
+            # Avoid dumping gigantic dir() logs unless you really want it.
+            # _dbg(f"Model executor attributes: {dir(model_executor)}")
+    
+        # --- Fast paths (cheap checks) ------------------------------------------
+    
+        count = 0
+        replaced_runner_ids = set()
+    
+        def _count_replace(obj) -> None:
+            nonlocal count
+            if obj is None:
+                return
+            oid = id(obj)
+            if oid in replaced_runner_ids:
+                return
+            # Try direct sampler replacement on obj
+            if _try_set_sampler(obj):
+                replaced_runner_ids.add(oid)
+                count += 1
+    
+        def _count_replace_container(container) -> None:
+            """Try replace via runner inside container."""
+            nonlocal count
+            if container is None:
+                return
+            if _maybe_replace_on_runner(container):
+                # Mark the runner itself if possible to avoid double counting
+                for rattr in ("model_runner", "_model_runner", "runner"):
+                    if hasattr(container, rattr):
+                        runner = getattr(container, rattr, None)
+                        if runner is not None:
+                            replaced_runner_ids.add(id(runner))
+                            break
+                count += 1
+    
+        # 1) model_executor.model_runner(.sampler)
+        _count_replace_container(model_executor)
+    
+        # 2) driver/worker patterns (present in some versions, absent in others)
+        for attr in ("driver_worker", "_driver_worker", "driver"):
+            if hasattr(model_executor, attr):
+                dw = getattr(model_executor, attr, None)
+                _count_replace_container(dw)
+    
+                # Some v1-ish nestings: driver_worker.worker.model_runner
+                for nested in ("worker", "_worker"):
+                    if hasattr(dw, nested):
+                        _count_replace_container(getattr(dw, nested, None))
+    
+        # 3) workers collections (distributed cases)
+        for attr in ("workers", "worker", "worker_pool", "tp_workers", "pp_workers"):
+            if hasattr(model_executor, attr):
+                ws = getattr(model_executor, attr, None)
+                if isinstance(ws, dict):
+                    iterable = ws.values()
+                elif isinstance(ws, (list, tuple, set)):
+                    iterable = ws
+                else:
+                    iterable = [ws]
+                for w in iterable:
+                    _count_replace_container(w)
+    
+        # If fast paths worked, we're done.
+        if count > 0:
+            return count
+    
+        # --- Fallback: bounded graph walk ---------------------------------------
+        # Find any object that *either*:
+        #   - is a runner-like container with model_runner, or
+        #   - directly has a sampler-like attr.
+        #
+        # This is what fixes “sometimes it can not find the sampler to replace”.
+        for obj, depth in _walk_object_graph(model_executor, max_depth=6):
+            # First: direct sampler attrs on obj
+            if id(obj) not in replaced_runner_ids and _try_set_sampler(obj):
+                replaced_runner_ids.add(id(obj))
+                count += 1
+                continue
+    
+            # Second: sampler on runner inside obj
+            # (common case: worker.model_runner.sampler)
+            if _maybe_replace_on_runner(obj):
+                # Record runner id if found
+                for rattr in ("model_runner", "_model_runner", "runner"):
+                    if hasattr(obj, rattr):
+                        runner = getattr(obj, rattr, None)
+                        if runner is not None:
+                            replaced_runner_ids.add(id(runner))
+                            break
+                count += 1
+    
         return count
 
     def generate(self, prompts, sampling_params=None, **kwargs):
