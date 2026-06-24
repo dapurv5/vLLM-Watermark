@@ -24,6 +24,7 @@ Tiny. Hackable. Lightning-fast watermarking for researchers built on vLLM
    :caption: Watermarking algorithms
 
    algorithms/openai
+   algorithms/openai_pl
    algorithms/openai_dr
    algorithms/maryland
    algorithms/pf
@@ -47,6 +48,9 @@ Supported Algorithms
    * - **Gumbel/OpenAI**
      - Gumbel-Max trick for deterministic sampling
      - `Aaronson (2023) <https://scottaaronson.blog/?p=6823>`_
+   * - **Power Law Detection**
+     - Near-optimal detection for Gumbel watermarks
+     - `Lattimore (2026) <https://arxiv.org/abs/2603.30017>`_
    * - **Randomized Gumbel**
      - Gumbel with double randomization for diversity
      - `Verma & Phan (2025) <https://arxiv.org/pdf/2506.04462>`_

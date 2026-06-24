@@ -31,6 +31,7 @@ class DetectionAlgorithm(Enum):
     OPENAI = "openai"
     OPENAI_Z = "openai_z"
     OPENAI_DR = "openai_dr"
+    OPENAI_PL = "openai_pl"
     MARYLAND = "maryland"
     MARYLAND_Z = "maryland_z"
     PF = "pf"

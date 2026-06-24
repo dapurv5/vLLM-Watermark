@@ -5,6 +5,7 @@ from .base import WmDetector
 # Import the factory
 from .factory import WatermarkDetectors
 from .maryland_detectors import MarylandDetector, MarylandDetectorZ
+from .openai_detector_pl import OpenaiDetectorPL
 from .openai_detectors import OpenaiDetector, OpenaiDetectorZ
 from .pf_detector import PFDetector
 from .synthid_detector import SynthIDDetector
@@ -14,6 +15,7 @@ __all__ = [
     "MarylandDetector",
     "MarylandDetectorZ",
     "OpenaiDetector",
+    "OpenaiDetectorPL",
     "OpenaiDetectorZ",
     "PFDetector",
     "SynthIDDetector",

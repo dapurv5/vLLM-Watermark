@@ -1,0 +1,566 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Power Law Detection for Gumbel Watermarking &mdash; vLLM-Watermark 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=e98369cd" />
+
+  
+    <link rel="shortcut icon" href="../_static/vLLM-WM-Logo.png"/>
+    <link rel="canonical" href="/vLLM-Watermark/algorithms/openai_pl.html" />
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/custom.js?v=192d2930"></script>
+      <script>window.MathJax = {"tex": {"equationNumbers": {"autoNumber": "AMS"}, "extensions": ["AMSmath.js", "AMSsymbols.js"]}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Randomized Gumbel Watermarking" href="openai_dr.html" />
+    <link rel="prev" title="OpenAI/Gumbel Watermarking" href="openai.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #437eb4" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            vLLM-Watermark
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performance evaluation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmark.html">Performance Benchmarking</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Watermarking algorithms</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="openai.html">OpenAI/Gumbel Watermarking</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Power Law Detection for Gumbel Watermarking</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#theory">Theory</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#background-exponential-detection-aaronson-2022">Background: Exponential Detection (Aaronson 2022)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#power-law-detection-lattimore-2026">Power Law Detection (Lattimore 2026)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#intuition">Intuition</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#when-does-it-help">When Does It Help?</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#empirical-comparison">Empirical Comparison</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#experimental-setup">Experimental Setup</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#three-detectors-compared">Three Detectors Compared</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#results">Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#diagnostic-plots">Diagnostic Plots</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#key-observations">Key Observations</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#why-no-difference-was-observed">Why No Difference Was Observed</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#implementation-details">Implementation Details</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-code">Example Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#paper-reference">Paper Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#see-also">See Also</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="openai_dr.html">Randomized Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="maryland.html">KGW (Maryland) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pf.html">Permute-and-Flip (PF) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unigram.html">Unigram Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="synthid.html">SynthID Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dip.html">DiPmark (DIP) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sweet.html">SWEET Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="blackbox.html">Black-Box Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="alignment_resampling.html">Alignment Resampling</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #437eb4" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">vLLM-Watermark</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Power Law Detection for Gumbel Watermarking</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/algorithms/openai_pl.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="power-law-detection-for-gumbel-watermarking">
+<h1>Power Law Detection for Gumbel Watermarking<a class="headerlink" href="#power-law-detection-for-gumbel-watermarking" title="Link to this heading"></a></h1>
+<p>A refined detection mechanism for the Gumbel/OpenAI watermark that replaces
+Aaronson’s exponential statistic with a truncated power law. Proven to be
+near-optimal in a problem-dependent sense among all model-agnostic
+watermarking schemes.</p>
+<div style="margin: 20px 0; line-height: 1.8;">
+    <p style="margin: 5px 0; font-size: 14px;">
+        <strong>Author:</strong> Tor Lattimore (Google DeepMind)
+    </p>
+    <p style="margin: 5px 0; font-size: 14px;">
+        <strong>Paper:</strong>
+        <a href="https://arxiv.org/abs/2603.30017" target="_blank" style="display: inline-block; background-color: #6c757d; color: white; padding: 5px 12px; border-radius: 3px; font-size: 12px; text-decoration: none; margin-left: 8px;">arXiv:2603.30017</a>
+    </p>
+</div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is a <strong>detection-only</strong> algorithm. It detects the same Gumbel/OpenAI
+watermark produced by the <code class="docutils literal notranslate"><span class="pre">OPENAI</span></code> watermarking algorithm — it simply
+uses a different test statistic for detection. Use <code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.OPENAI</span></code>
+for generation and <code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.OPENAI_PL</span></code> for detection.</p>
+</div>
+<section id="theory">
+<h2>Theory<a class="headerlink" href="#theory" title="Link to this heading"></a></h2>
+<section id="background-exponential-detection-aaronson-2022">
+<h3>Background: Exponential Detection (Aaronson 2022)<a class="headerlink" href="#background-exponential-detection-aaronson-2022" title="Link to this heading"></a></h3>
+<p>The standard Gumbel detector reconstructs the noise variables
+<span class="math notranslate nohighlight">\(V_t = U_{t,A_t}\)</span> from the text and secret key. Under <span class="math notranslate nohighlight">\(H_0\)</span>
+(no watermark), <span class="math notranslate nohighlight">\(V_t \sim \text{Uniform}[0,1]\)</span>. Under <span class="math notranslate nohighlight">\(H_1\)</span>
+(watermarked), <span class="math notranslate nohighlight">\(V_t\)</span> is biased toward 1.</p>
+<p>Aaronson’s detector uses the exponential statistic:</p>
+<div class="math notranslate nohighlight">
+\[S_t = -\log(1 - V_t)\]</div>
+<p>which is <span class="math notranslate nohighlight">\(\text{Exp}(1)\)</span> under <span class="math notranslate nohighlight">\(H_0\)</span>. The sum
+<span class="math notranslate nohighlight">\(\sum_{t=1}^n S_t \sim \Gamma(n, 1)\)</span>, giving an exact p-value.</p>
+<p>Aaronson showed detection succeeds when <span class="math notranslate nohighlight">\(n = \Omega(\log(1/\delta) / \bar{H}^2)\)</span>
+where <span class="math notranslate nohighlight">\(\bar{H} = \frac{1}{n}\sum H(P_t)\)</span> is the average entropy. This bound
+is <strong>variance-unaware</strong>: it treats all entropy contributions equally.</p>
+</section>
+<section id="power-law-detection-lattimore-2026">
+<h3>Power Law Detection (Lattimore 2026)<a class="headerlink" href="#power-law-detection-lattimore-2026" title="Link to this heading"></a></h3>
+<p>Lattimore replaces the exponential with a truncated power law statistic:</p>
+<div class="math notranslate nohighlight">
+\[S(u) = \min\left(\frac{1}{\sqrt{\varepsilon}},\; \frac{1}{\sqrt{1-u}}\right) - \mu\]</div>
+<p>where <span class="math notranslate nohighlight">\(\varepsilon = \log(1/\delta)/n\)</span> and <span class="math notranslate nohighlight">\(\mu = 2 - \sqrt{\varepsilon}\)</span>
+is chosen so that <span class="math notranslate nohighlight">\(\mathbb{E}[S(U)] = 0\)</span> when <span class="math notranslate nohighlight">\(U \sim \text{Uniform}[0,1]\)</span>.</p>
+<p>The critical threshold <span class="math notranslate nohighlight">\(\tau_\star\)</span> is calibrated via Monte Carlo so that:</p>
+<div class="math notranslate nohighlight">
+\[\mathbb{P}_0\left(\sum_{t=1}^n S_t \geq \tau_\star\right) = \delta\]</div>
+<p><strong>Theorem 2</strong> (Lattimore): Detection succeeds with probability <span class="math notranslate nohighlight">\(\geq 1 - 2\delta\)</span>
+whenever <span class="math notranslate nohighlight">\(\sum_{t=1}^n G_\varepsilon(P_t) \geq C\tau\)</span>, where
+<span class="math notranslate nohighlight">\(G_\varepsilon(p)\)</span> is an entropy-like quantity that captures per-token
+detectability more finely than <span class="math notranslate nohighlight">\(\bar{H}\)</span>.</p>
+</section>
+<section id="intuition">
+<h3>Intuition<a class="headerlink" href="#intuition" title="Link to this heading"></a></h3>
+<p>The key insight is about <strong>where the information lives</strong>. Consider the CDF deviation
+<span class="math notranslate nohighlight">\(F(x) - F_n(x)\)</span> between the true uniform CDF and the empirical CDF of
+<span class="math notranslate nohighlight">\((V_t)\)</span>. Under watermarking, this deviation is largest for
+<span class="math notranslate nohighlight">\(x \in [1/2, 1]\)</span> (near 1). The exponential statistic weights all regions
+equally, but the power law statistic upweights the informative region near 1 via
+the <span class="math notranslate nohighlight">\(1/\sqrt{1-u}\)</span> term, while truncating at <span class="math notranslate nohighlight">\(1/\sqrt{\varepsilon}\)</span>
+to control variance.</p>
+<p>This is analogous to the Anderson-Darling test versus the Kolmogorov-Smirnov test
+in classical statistics: weighting by the variance of the empirical process yields
+a more powerful test.</p>
+</section>
+<section id="when-does-it-help">
+<h3>When Does It Help?<a class="headerlink" href="#when-does-it-help" title="Link to this heading"></a></h3>
+<p>The theoretical improvement over Aaronson’s bound is most significant when:</p>
+<ol class="arabic simple">
+<li><p><strong>Entropy varies across positions</strong>: Some tokens are very predictable
+(low <span class="math notranslate nohighlight">\(H(P_t)\)</span>) while others have high entropy. Aaronson’s
+<span class="math notranslate nohighlight">\(\bar{H}^2\)</span> penalizes variance; the power law’s
+<span class="math notranslate nohighlight">\(G_\varepsilon\)</span> handles heterogeneity better.</p></li>
+<li><p><strong>Many rare tokens contribute</strong>: When <span class="math notranslate nohighlight">\(P_t\)</span> has many tokens with
+moderate probability (Example 10 in the paper), the power law needs
+<span class="math notranslate nohighlight">\(n = \Omega(\log(n)\log(1/\delta)/\beta)\)</span> tokens versus Aaronson’s
+<span class="math notranslate nohighlight">\(n = \Omega(\log(1/\delta)/\beta^2)\)</span> — a <span class="math notranslate nohighlight">\(\beta\)</span> factor
+improvement for small <span class="math notranslate nohighlight">\(\beta\)</span>.</p></li>
+<li><p><strong>Short sequences</strong>: The variance-awareness of the power law matters
+more when <span class="math notranslate nohighlight">\(n\)</span> is small, because there are fewer tokens to
+average over.</p></li>
+</ol>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Practical caveat from the paper (Section 6):</strong> Lattimore acknowledges that
+“its performance on language data seems to be slightly worse [than the
+exponential detector], presumably due to the additional logarithmic factor
+and/or constant factors.” The theoretical advantage is <strong>asymptotic</strong> and
+manifests in specific distribution shapes (Examples 8-10 in the paper).
+On typical LLM outputs, the exponential/gamma detector may match or
+slightly outperform the power law detector.</p>
+</div>
+</section>
+</section>
+<section id="empirical-comparison">
+<h2>Empirical Comparison<a class="headerlink" href="#empirical-comparison" title="Link to this heading"></a></h2>
+<p>We ran a head-to-head comparison of three detection statistics for the same
+Gumbel watermark on SageMaker (<code class="docutils literal notranslate"><span class="pre">ml.g5.2xlarge</span></code>, 1x A10G GPU).</p>
+<section id="experimental-setup">
+<h3>Experimental Setup<a class="headerlink" href="#experimental-setup" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><strong>Model</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">meta-llama/Llama-3.2-1B</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Samples</strong></p></td>
+<td><p>500 watermarked + 500 unwatermarked</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Watermark</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OPENAI</span></code>, ngram=2, seed=42, payload=0</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Generation</strong></p></td>
+<td><p>temperature=0.7, top_p=0.9, max_tokens=512</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Target lengths</strong></p></td>
+<td><p>10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500 scored tokens</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Threshold (delta)</strong></p></td>
+<td><p>0.05</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Dataset</strong></p></td>
+<td><p>C4 (processed)</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="three-detectors-compared">
+<h3>Three Detectors Compared<a class="headerlink" href="#three-detectors-compared" title="Link to this heading"></a></h3>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 30.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Detector</p></th>
+<th class="head"><p>Statistic</p></th>
+<th class="head"><p>p-value Method</p></th>
+<th class="head"><p>Reference</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Gamma</strong> (<code class="docutils literal notranslate"><span class="pre">OpenaiDetector</span></code>)</p></td>
+<td><p><span class="math notranslate nohighlight">\(S_t = -\log(1 - V_t)\)</span></p></td>
+<td><p>Exact gamma CDF</p></td>
+<td><p>Aaronson 2022</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Z-score</strong> (<code class="docutils literal notranslate"><span class="pre">OpenaiDetectorZ</span></code>)</p></td>
+<td><p><span class="math notranslate nohighlight">\(S_t = -\log(1 - V_t)\)</span></p></td>
+<td><p>Normal approx (CLT)</p></td>
+<td><p>Aaronson 2022</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Power Law</strong> (<code class="docutils literal notranslate"><span class="pre">OpenaiDetectorPL</span></code>)</p></td>
+<td><p><span class="math notranslate nohighlight">\(S(u) = \min(1/\sqrt{\varepsilon}, 1/\sqrt{1-u}) - \mu\)</span></p></td>
+<td><p>Monte Carlo (100K samples)</p></td>
+<td><p>Lattimore 2026</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="results">
+<h3>Results<a class="headerlink" href="#results" title="Link to this heading"></a></h3>
+<p><strong>Summary at selected sequence lengths</strong> (500 watermarked + 500 unwatermarked
+texts, delta=0.05):</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 12.2%" />
+<col style="width: 14.6%" />
+<col style="width: 14.6%" />
+<col style="width: 14.6%" />
+<col style="width: 14.6%" />
+<col style="width: 14.6%" />
+<col style="width: 14.6%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>n</p></th>
+<th class="head"><p>Gamma TPR</p></th>
+<th class="head"><p>Z-score TPR</p></th>
+<th class="head"><p>PL TPR</p></th>
+<th class="head"><p>Gamma FPR</p></th>
+<th class="head"><p>Z-score FPR</p></th>
+<th class="head"><p>PL FPR</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>20</p></td>
+<td><p>0.984</p></td>
+<td><p>0.984</p></td>
+<td><p>0.982</p></td>
+<td><p>0.060</p></td>
+<td><p>0.032</p></td>
+<td><p>0.060</p></td>
+</tr>
+<tr class="row-odd"><td><p>50</p></td>
+<td><p>0.962</p></td>
+<td><p>0.962</p></td>
+<td><p>0.962</p></td>
+<td><p>0.070</p></td>
+<td><p>0.042</p></td>
+<td><p>0.066</p></td>
+</tr>
+<tr class="row-even"><td><p>100</p></td>
+<td><p>0.918</p></td>
+<td><p>0.918</p></td>
+<td><p>0.918</p></td>
+<td><p>0.082</p></td>
+<td><p>0.040</p></td>
+<td><p>0.074</p></td>
+</tr>
+<tr class="row-odd"><td><p>200</p></td>
+<td><p>0.862</p></td>
+<td><p>0.862</p></td>
+<td><p>0.862</p></td>
+<td><p>0.088</p></td>
+<td><p>0.054</p></td>
+<td><p>0.090</p></td>
+</tr>
+<tr class="row-even"><td><p>500</p></td>
+<td><p>0.804</p></td>
+<td><p>0.804</p></td>
+<td><p>0.804</p></td>
+<td><p>0.136</p></td>
+<td><p>0.114</p></td>
+<td><p>0.122</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="diagnostic-plots">
+<h3>Diagnostic Plots<a class="headerlink" href="#diagnostic-plots" title="Link to this heading"></a></h3>
+<div class="plot-grid">
+  <div class="plot-cell">
+    <img src="../_static/plot_detection_power.png"
+         alt="Detection Power: TPR vs Sequence Length" />
+    <div class="plot-caption"><strong>Plot 1 — Detection Power.</strong>
+    All three curves overlap almost perfectly. TPR starts near 0.97 at
+    n=10 and <em>decreases</em> as n grows (to ~0.80 at n=500) — this
+    is not a bug but an artifact of FPR inflation from n-gram correlation
+    (see Plot 2). Under these conditions (Llama-3.2-1B, temp=0.7), the
+    watermark signal is so strong that all detectors saturate.</div>
+  </div>
+  <div class="plot-cell">
+    <img src="../_static/plot_fpr_calibration.png"
+         alt="FPR Calibration: Empirical vs Nominal" />
+    <div class="plot-caption"><strong>Plot 2 — FPR Calibration.</strong>
+    A calibrated test holds FPR at δ=0.05 (dashed line). Z-score (orange)
+    is conservative at small n — the CLT overestimates gamma-tail p-values.
+    Gamma (blue) and Power Law (green) start near δ but all three inflate
+    to 0.11–0.14 at n=500 due to repeated n-gram contexts creating
+    correlated V<sub>t</sub> values that violate the i.i.d. assumption.</div>
+  </div>
+  <div class="plot-cell">
+    <img src="../_static/plot_roc_curves.png"
+         alt="ROC Curves at Various Sequence Lengths" />
+    <div class="plot-caption"><strong>Plot 3 — ROC Curves.</strong>
+    Full FPR–TPR trade-off across all thresholds at n=20, 50, 100, 200.
+    All three detectors produce virtually identical ROC curves hugging
+    the top-left corner. Quality degrades at larger n (n-gram correlation),
+    but even at n=200 all detectors achieve &gt;0.85 TPR at FPR=0.05.</div>
+  </div>
+  <div class="plot-cell">
+    <img src="../_static/plot_pvalue_distributions.png"
+         alt="p-value Distributions at n=100" />
+    <div class="plot-caption"><strong>Plot 4 — p-value Distributions (n=100).</strong>
+    Top row (H₀): Gamma and PL are roughly Uniform[0,1] with a spike
+    near 1.0 from n-gram artifacts; Z-score shows right-skew (conservative).
+    Bottom row (H₁): all three concentrate p-values near 0 (density &gt;20),
+    confirming the watermark signal overwhelms every statistic.</div>
+  </div>
+  <div class="plot-cell full-width">
+    <img src="../_static/plot_tokens_to_detection.png"
+         alt="Tokens-to-Detection CDF"
+         style="max-width: 60%; display: block; margin: 0 auto;" />
+    <div class="plot-caption" style="text-align: center;">
+    <strong>Plot 5 — Tokens-to-Detection CDF.</strong>
+    The most operationally useful plot: all three CDFs shoot to ~0.95 by
+    n=10–20 tokens. With Llama-3.2-1B at temp=0.7, you can reliably
+    detect the Gumbel watermark from the first 10–20 tokens regardless
+    of detection statistic. The power law's theoretical sample-complexity
+    advantage does not materialize when the signal is this strong.</div>
+  </div>
+</div></section>
+<section id="key-observations">
+<h3>Key Observations<a class="headerlink" href="#key-observations" title="Link to this heading"></a></h3>
+<ol class="arabic simple">
+<li><p><strong>All three detectors perform nearly identically.</strong> With Llama-3.2-1B at
+temperature=0.7, the watermark signal is extremely strong: mean
+<span class="math notranslate nohighlight">\(V_t = 0.8354\)</span> for watermarked text (compared to 0.5 under
+<span class="math notranslate nohighlight">\(H_0\)</span>). At this signal strength, even 10 scored tokens suffice
+for &gt;94% TPR with all detectors.</p></li>
+<li><p><strong>FPR increases with n for all detectors</strong> (0.060 → 0.136 for Gamma).
+This is caused by repeated n-gram contexts in real text producing
+perfectly correlated <span class="math notranslate nohighlight">\(V_t\)</span> values, violating the i.i.d. assumption
+that all three detectors share.</p></li>
+<li><p><strong>Z-score is conservative at small n</strong> — the CLT normal approximation
+over-estimates p-values when <span class="math notranslate nohighlight">\(n &lt; 30\)</span>, yielding <em>lower</em> FPR than
+nominal but potentially missing some watermarked texts.</p></li>
+<li><p><strong>Median detection occurs at n=10 tokens</strong> for all three detectors
+(the shortest length tested), confirming the signal is saturatingly strong.</p></li>
+</ol>
+</section>
+<section id="why-no-difference-was-observed">
+<h3>Why No Difference Was Observed<a class="headerlink" href="#why-no-difference-was-observed" title="Link to this heading"></a></h3>
+<p>The power law’s theoretical advantage appears when the <strong>signal-to-noise ratio
+is low</strong> — specifically when the per-token entropy-like quantity
+<span class="math notranslate nohighlight">\(G_\varepsilon(P_t)\)</span> is small relative to the noise floor. In our
+experiment, the signal was so strong that all detectors were already near
+ceiling performance at the shortest sequence length.</p>
+<p>To observe a measurable difference, try:</p>
+<ul class="simple">
+<li><p><strong>Higher temperature</strong> (1.0-1.5): Increases entropy <span class="math notranslate nohighlight">\(H(P_t)\)</span>,
+reducing the bias on <span class="math notranslate nohighlight">\(V_t\)</span> and weakening the watermark signal.</p></li>
+<li><p><strong>top_p = 1.0</strong> (no nucleus filtering): Includes more low-probability
+tokens, increasing effective vocabulary and entropy.</p></li>
+<li><p><strong>Heterogeneous prompts</strong>: Mix of factual recall (low entropy) and
+creative generation (high entropy) within a single text, which is
+where the variance-aware power law should shine.</p></li>
+<li><p><strong>Adversarial perturbation</strong>: Edit/paraphrase watermarked text to
+dilute the signal — the power law detector should degrade more gracefully.</p></li>
+<li><p><strong>Larger models</strong>: Higher-capacity models often produce more uncertain
+(higher entropy) distributions.</p></li>
+<li><p><strong>Lower n-gram</strong>: Using ngram=1 instead of ngram=2 reduces context
+dependence, potentially weakening the signal.</p></li>
+</ul>
+<p><strong>Reproducing the comparison:</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>./sml<span class="w"> </span>run<span class="w"> </span>scripts/benchmark/run_sagemaker_detector_comparison.py
+</pre></div>
+</div>
+<p>The script generates 5 diagnostic plots (FPR calibration, detection power,
+ROC curves, p-value distributions, tokens-to-detection CDF) and a summary CSV.</p>
+</section>
+</section>
+<section id="implementation-details">
+<h2>Implementation Details<a class="headerlink" href="#implementation-details" title="Link to this heading"></a></h2>
+<p>The implementation overrides the base <code class="docutils literal notranslate"><span class="pre">detect()</span></code> method because the score
+function <span class="math notranslate nohighlight">\(S(u)\)</span> depends on <span class="math notranslate nohighlight">\(\varepsilon = \log(1/\delta)/n\)</span>, which
+requires knowing the total number of tokens <span class="math notranslate nohighlight">\(n\)</span> before computing
+per-token scores. This differs from the standard <code class="docutils literal notranslate"><span class="pre">score_tok</span></code> → <code class="docutils literal notranslate"><span class="pre">get_pvalue</span></code>
+pipeline used by other detectors.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">score_tok()</span></code> method returns raw <span class="math notranslate nohighlight">\(V_t\)</span> values for interface
+compatibility, and <code class="docutils literal notranslate"><span class="pre">get_pvalue()</span></code> performs a full MC simulation. For the
+complete algorithm, use <code class="docutils literal notranslate"><span class="pre">detect()</span></code> directly.</p>
+</section>
+<section id="example-code">
+<h2>Example Code<a class="headerlink" href="#example-code" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;VLLM_USE_V1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;VLLM_ENABLE_V1_MULTIPROCESSING&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">vllm</span><span class="w"> </span><span class="kn">import</span> <span class="n">LLM</span><span class="p">,</span> <span class="n">SamplingParams</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vllm_watermark.core</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DetectionAlgorithm</span><span class="p">,</span>
+    <span class="n">WatermarkedLLMs</span><span class="p">,</span>
+    <span class="n">WatermarkingAlgorithm</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vllm_watermark.watermark_detectors</span><span class="w"> </span><span class="kn">import</span> <span class="n">WatermarkDetectors</span>
+
+<span class="n">llm</span> <span class="o">=</span> <span class="n">LLM</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/Llama-3.2-1B&quot;</span><span class="p">,</span>
+    <span class="n">enforce_eager</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">max_model_len</span><span class="o">=</span><span class="mi">1024</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Generate with standard Gumbel watermark</span>
+<span class="n">wm_llm</span> <span class="o">=</span> <span class="n">WatermarkedLLMs</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span>
+    <span class="n">algo</span><span class="o">=</span><span class="n">WatermarkingAlgorithm</span><span class="o">.</span><span class="n">OPENAI</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">ngram</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Detect with the Power Law statistic (same watermark, better theory)</span>
+<span class="n">detector</span> <span class="o">=</span> <span class="n">WatermarkDetectors</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">algo</span><span class="o">=</span><span class="n">DetectionAlgorithm</span><span class="o">.</span><span class="n">OPENAI_PL</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span>
+    <span class="n">ngram</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+    <span class="n">seed</span><span class="o">=</span><span class="mi">42</span><span class="p">,</span>
+    <span class="n">payload</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">prompts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Explain the theory of general relativity&quot;</span><span class="p">]</span>
+<span class="n">sampling_params</span> <span class="o">=</span> <span class="n">SamplingParams</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">top_p</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">wm_llm</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">prompts</span><span class="p">,</span> <span class="n">sampling_params</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="n">text</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Generated: </span><span class="si">{</span><span class="n">text</span><span class="p">[:</span><span class="mi">100</span><span class="p">]</span><span class="si">}</span><span class="s2">...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Watermarked: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;is_watermarked&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Score: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;score&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;P-value: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;pvalue&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="paper-reference">
+<h2>Paper Reference<a class="headerlink" href="#paper-reference" title="Link to this heading"></a></h2>
+<p>Lattimore, T. (2026). Refined Detection for Gumbel Watermarking.
+<em>arXiv preprint arXiv:2603.30017</em>. <a class="reference external" href="https://arxiv.org/abs/2603.30017">https://arxiv.org/abs/2603.30017</a></p>
+</section>
+<section id="see-also">
+<h2>See Also<a class="headerlink" href="#see-also" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="openai.html"><span class="doc">OpenAI/Gumbel Watermarking</span></a> — The standard Gumbel/OpenAI watermark (generation + exponential detection)</p></li>
+<li><p><a class="reference internal" href="openai_dr.html"><span class="doc">Randomized Gumbel Watermarking</span></a> — Randomized Gumbel for enhanced diversity</p></li>
+</ul>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="openai.html" class="btn btn-neutral float-left" title="OpenAI/Gumbel Watermarking" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="openai_dr.html" class="btn btn-neutral float-right" title="Randomized Gumbel Watermarking" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Apurv Verma.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

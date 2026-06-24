@@ -9,7 +9,7 @@
   <title>vLLM-Watermark &mdash; vLLM-Watermark 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
-      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=85bfff7c" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e98369cd" />
 
   
     <link rel="shortcut icon" href="_static/vLLM-WM-Logo.png"/>
@@ -56,6 +56,7 @@
 <p class="caption" role="heading"><span class="caption-text">Watermarking algorithms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/openai.html">OpenAI/Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/openai_pl.html">Power Law Detection for Gumbel Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/openai_dr.html">Randomized Gumbel Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/maryland.html">KGW (Maryland) Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/pf.html">Permute-and-Flip (PF) Watermarking</a></li>
@@ -112,6 +113,7 @@
 <p class="caption" role="heading"><span class="caption-text">Watermarking algorithms</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/openai.html">OpenAI/Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/openai_pl.html">Power Law Detection for Gumbel Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/openai_dr.html">Randomized Gumbel Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/maryland.html">KGW (Maryland) Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/pf.html">Permute-and-Flip (PF) Watermarking</a></li>
@@ -137,39 +139,43 @@
 <td><p>Gumbel-Max trick for deterministic sampling</p></td>
 <td><p><a class="reference external" href="https://scottaaronson.blog/?p=6823">Aaronson (2023)</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Randomized Gumbel</strong></p></td>
+<tr class="row-odd"><td><p><strong>Power Law Detection</strong></p></td>
+<td><p>Near-optimal detection for Gumbel watermarks</p></td>
+<td><p><a class="reference external" href="https://arxiv.org/abs/2603.30017">Lattimore (2026)</a></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Randomized Gumbel</strong></p></td>
 <td><p>Gumbel with double randomization for diversity</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/pdf/2506.04462">Verma &amp; Phan (2025)</a></p></td>
 </tr>
-<tr class="row-even"><td><p><strong>KGW/Maryland</strong></p></td>
+<tr class="row-odd"><td><p><strong>KGW/Maryland</strong></p></td>
 <td><p>Context-dependent green-red list with logit bias</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/pdf/2301.10226">Kirchenbauer et al. (2023)</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>PF (Permute-and-Flip)</strong></p></td>
+<tr class="row-even"><td><p><strong>PF (Permute-and-Flip)</strong></p></td>
 <td><p>Prefix-free coding with token permutations</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/abs/2402.05864">Lean et al. (2024)</a></p></td>
 </tr>
-<tr class="row-even"><td><p><strong>Unigram</strong></p></td>
+<tr class="row-odd"><td><p><strong>Unigram</strong></p></td>
 <td><p>Context-independent fixed green-red list</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/abs/2306.17439">Zhao et al. (2024)</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>SynthID</strong></p></td>
+<tr class="row-even"><td><p><strong>SynthID</strong></p></td>
 <td><p>Multi-layer tournament watermarking (non-distortionary)</p></td>
 <td><p><a class="reference external" href="https://www.nature.com/articles/s41586-024-08025-4">Dathathri et al. (2024)</a></p></td>
 </tr>
-<tr class="row-even"><td><p><strong>DIP (DiPmark)</strong></p></td>
+<tr class="row-odd"><td><p><strong>DIP (DiPmark)</strong></p></td>
 <td><p>Permutation-based probability redistribution</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/abs/2310.07710">Wu et al. (2023)</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>SWEET</strong></p></td>
+<tr class="row-even"><td><p><strong>SWEET</strong></p></td>
 <td><p>Entropy-selective green-list biasing</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/abs/2305.15060">Lee et al. (2023)</a></p></td>
 </tr>
-<tr class="row-even"><td><p><strong>Black-Box</strong></p></td>
+<tr class="row-odd"><td><p><strong>Black-Box</strong></p></td>
 <td><p>Best-of-m rejection sampling (zero distortion)</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/abs/2410.02099">Bahri &amp; Wieting (2026)</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Alignment Resampling</strong></p></td>
+<tr class="row-even"><td><p><strong>Alignment Resampling</strong></p></td>
 <td><p>Best-of-N with reward model (wraps any watermark)</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/pdf/2506.04462">Verma &amp; Phan (2025)</a></p></td>
 </tr>

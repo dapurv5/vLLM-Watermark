@@ -221,6 +221,20 @@ class WatermarkDetectors:
                 threshold=threshold,
                 **kwargs,
             )
+        elif algo == DetectionAlgorithm.OPENAI_PL:
+            from .openai_detector_pl import OpenaiDetectorPL
+
+            return OpenaiDetectorPL(
+                tokenizer=tokenizer,
+                vocab_size=vocab_size,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                payload=payload,
+                threshold=threshold,
+                **kwargs,
+            )
         elif algo == DetectionAlgorithm.BLACKBOX:
             from .blackbox_detector import BlackBoxDetector
 
