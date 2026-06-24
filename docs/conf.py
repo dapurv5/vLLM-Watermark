@@ -125,9 +125,9 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3/", None),
     "numpy": ("https://numpy.org/doc/stable/", None),
     "torch": ("https://pytorch.org/docs/stable/", None),
-    "transformers": ("https://huggingface.co/docs/transformers/", None),
-    "vllm": ("https://docs.vllm.ai/", None),
 }
+
+intersphinx_timeout = 10
 
 # -- Options for MathJax ----------------------------------------------------
 

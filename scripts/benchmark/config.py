@@ -55,17 +55,6 @@ ALGORITHM_CONFIGS = {
             "delta": 1.0,
         },
     ),
-    "MARYLAND_L": AlgorithmConfig(
-        name="MARYLAND_L",
-        algorithm=WatermarkingAlgorithm.MARYLAND_L,
-        detection_algorithm=DetectionAlgorithm.MARYLAND_Z,
-        params={
-            "ngram": 2,
-            "seed": 42,
-            "gamma": 0.5,
-            "delta": 1.0,
-        },
-    ),
     "PF": AlgorithmConfig(
         name="PF",
         algorithm=WatermarkingAlgorithm.PF,
@@ -74,6 +63,62 @@ ALGORITHM_CONFIGS = {
             "ngram": 2,
             "seed": 42,
             "payload": 0,
+        },
+    ),
+    "UNIGRAM": AlgorithmConfig(
+        name="UNIGRAM",
+        algorithm=WatermarkingAlgorithm.UNIGRAM,
+        detection_algorithm=DetectionAlgorithm.UNIGRAM_Z,
+        params={
+            "ngram": 1,
+            "seed": 42,
+            "gamma": 0.5,
+            "delta": 2.0,
+            "hash_key": 15485863,
+        },
+    ),
+    "SYNTHID": AlgorithmConfig(
+        name="SYNTHID",
+        algorithm=WatermarkingAlgorithm.SYNTHID,
+        detection_algorithm=DetectionAlgorithm.SYNTHID,
+        params={
+            "ngram": 4,
+            "seed": 42,
+        },
+    ),
+    "DIP": AlgorithmConfig(
+        name="DIP",
+        algorithm=WatermarkingAlgorithm.DIP,
+        detection_algorithm=DetectionAlgorithm.DIP,
+        params={
+            "ngram": 2,
+            "seed": 42,
+            "alpha": 0.45,
+            "gamma": 0.5,
+            "hash_key": 15485863,
+        },
+    ),
+    "SWEET": AlgorithmConfig(
+        name="SWEET",
+        algorithm=WatermarkingAlgorithm.SWEET,
+        detection_algorithm=DetectionAlgorithm.SWEET,
+        params={
+            "ngram": 2,
+            "seed": 42,
+            "gamma": 0.5,
+            "delta": 2.0,
+            "hash_key": 15485863,
+            "entropy_threshold": 3.0,
+        },
+    ),
+    "BLACKBOX": AlgorithmConfig(
+        name="BLACKBOX",
+        algorithm=WatermarkingAlgorithm.BLACKBOX,
+        detection_algorithm=DetectionAlgorithm.BLACKBOX,
+        params={
+            "ngram": 4,
+            "hash_key": 15485863,
+            "n_candidates": 128,
         },
     ),
 }

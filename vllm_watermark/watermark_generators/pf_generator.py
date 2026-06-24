@@ -43,7 +43,7 @@ class PFGenerator(WmGenerator):
                 self.rng.manual_seed(seed)
                 # generate rs randomly between [0,1]
                 rs = torch.rand(
-                    self.tokenizer.vocab_size,
+                    logits.shape[-1],
                     generator=self.rng,
                     device=probs_sort.device,
                 )

@@ -29,12 +29,24 @@ Supported Algorithms
    * - **MARYLAND**
      - ngram, seed, gamma, delta
      - Statistical watermarking with hypothesis testing
-   * - **MARYLAND_L**
-     - ngram, seed, gamma, delta
-     - Maryland algorithm with logit processing
    * - **PF**
      - ngram, seed, payload
      - Prefix-free coding watermarking
+   * - **UNIGRAM**
+     - ngram, seed, gamma, delta, hash_key
+     - Unigram-based statistical watermarking
+   * - **SYNTHID**
+     - ngram, seed
+     - Google DeepMind's tournament-based watermarking
+   * - **DIP**
+     - ngram, seed, alpha, gamma, hash_key
+     - Distributional-preserving watermarking
+   * - **SWEET**
+     - ngram, seed, gamma, delta, hash_key, entropy_threshold
+     - Entropy-aware statistical watermarking
+   * - **BLACKBOX**
+     - ngram, hash_key, n_candidates
+     - Black-box watermark detection via candidate search
 
 Usage Examples
 --------------
@@ -97,7 +109,7 @@ LLaMA-3.2-1B Performance on C4 Dataset (500 samples)
 
 .. list-table::
    :header-rows: 1
-   :widths: 15 15 15 15 15 15 15
+   :widths: 12 22 10 10 10 10 10
 
    * - Algorithm
      - Configuration
@@ -108,59 +120,68 @@ LLaMA-3.2-1B Performance on C4 Dataset (500 samples)
      - FPR
    * - **OPENAI**
      - ngram=2, seed=42, payload=0
-     - 0.941
-     - 0.996
-     - 0.968
-     - 0.967
-     - 0.062
+     - 0.925
+     - 0.992
+     - 0.958
+     - 0.958
+     - 0.008
    * - **MARYLAND**
      - ngram=2, seed=42, γ=0.5, δ=1.0
+     - 0.922
+     - 0.964
+     - 0.942
+     - 0.942
+     - 0.016
+   * - **PF**
+     - ngram=2, seed=42, payload=0
      - 0.902
-     - 0.882
-     - 0.892
-     - 0.893
-     - 0.096
-   * - **MARYLAND_L**
-     - ngram=2, seed=42, γ=0.5, δ=1.0
-     - 0.899
-     - 0.962
-     - 0.929
-     - 0.927
+     - 0.998
+     - 0.948
+     - 0.945
      - 0.108
-
-**Performance Metrics Comparison**
-
-.. list-table::
-   :header-rows: 1
-   :widths: 15 20 20 20 20
-
-   * - Algorithm
-     - Generation Rate (tokens/s)
-     - Generation Time (s)
-     - Detection Time (s)
-     - Total Time (s)
-   * - **OPENAI**
-     - 7,487
-     - 54.9
-     - 56.9
-     - 111.8
-   * - **MARYLAND**
-     - 5,968
-     - 66.1
-     - 104.4
-     - 170.5
-   * - **MARYLAND_L**
-     - 3,093
-     - 139.1
-     - 200.7
-     - 339.8
+   * - **UNIGRAM**
+     - ngram=1, seed=42, γ=0.5, δ=2.0
+     - 0.882
+     - 0.998
+     - 0.936
+     - 0.932
+     - 0.134
+   * - **SYNTHID**
+     - ngram=4, seed=42
+     - 0.929
+     - 0.996
+     - 0.961
+     - 0.960
+     - 0.076
+   * - **DIP**
+     - ngram=2, seed=42, α=0.45, γ=0.5
+     - 1.000
+     - 0.896
+     - 0.945
+     - 0.948
+     - 0.000
+   * - **SWEET**
+     - ngram=2, seed=42, γ=0.5, δ=2.0
+     - 0.914
+     - 0.952
+     - 0.932
+     - 0.931
+     - 0.090
+   * - **BLACKBOX**
+     - ngram=4, n_candidates=128
+     - 1.000
+     - 0.430
+     - 0.601
+     - 0.715
+     - 0.000
 
 **Key Observations:**
 
-- **OPENAI** achieves the highest precision (0.941) and recall (0.996), making it excellent for applications requiring minimal false positives and false negatives
-- **MARYLAND_L** provides a good balance with high recall (0.962) but at the cost of slower generation speed (3,093 tokens/s)
-- **MARYLAND** offers moderate performance across all metrics with faster processing than MARYLAND_L
-- Generation throughput varies significantly: OPENAI (7,487 tokens/s) > MARYLAND (5,968 tokens/s) > MARYLAND_L (3,093 tokens/s)
+- **SYNTHID** achieves the best F1 score (0.961) with strong precision (0.929) and near-perfect recall (0.996)
+- **OPENAI** is close behind (F1=0.958) and has the lowest FPR (0.008) among high-recall algorithms
+- **DIP** and **BLACKBOX** achieve perfect precision (1.000, zero false positives), but BLACKBOX trades this for lower recall (0.430)
+- **PF** and **UNIGRAM** have near-perfect recall (0.998) but higher false positive rates (0.108, 0.134)
+- **MARYLAND** and **SWEET** offer balanced precision-recall trade-offs with moderate FPR
 
 .. note::
-   Results are saved to the ``output/benchmark/`` directory with detailed configuration parameters for reproducibility.
+   Results are saved to the ``output/benchmark/`` directory with detailed configuration parameters for reproducibility. BLACKBOX was run with 100 samples due to its computationally expensive candidate search.

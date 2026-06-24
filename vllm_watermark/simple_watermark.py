@@ -47,6 +47,9 @@ class WatermarkSampler(BaseSampler):
         self.watermark_generator = watermark_generator
         self.debug = debug
 
+        self._token_history: list[list[int]] = []
+        self._prev_batch_size = 0
+
         if self.debug:
             logger.info(
                 f"Initialized WatermarkSampler with {type(watermark_generator).__name__}"
@@ -56,9 +59,6 @@ class WatermarkSampler(BaseSampler):
         self, logits: torch.Tensor, sampling_metadata: SamplingMetadata
     ) -> Optional[SamplerOutput]:
         """Apply watermarking to logits before calling the base sampler."""
-
-        if self.debug:
-            logger.debug(f"WatermarkSampler.forward: logits shape {logits.shape}")
 
         # Extract information needed for watermarking
         watermarked_logits, sampled_tokens = self._apply_watermarking(
@@ -84,85 +84,68 @@ class WatermarkSampler(BaseSampler):
             # No watermarking applied, use parent sampler
             return super().forward(watermarked_logits, sampling_metadata)
 
+    def _build_ngram_contexts_from_history(self, batch_size: int) -> list[list[int]]:
+        """Build ngram contexts from internally tracked token history (V1 fallback)."""
+        ngram_size = self.watermark_generator.ngram
+
+        if batch_size != self._prev_batch_size:
+            if batch_size > self._prev_batch_size:
+                self._token_history = [[] for _ in range(batch_size)]
+            else:
+                self._token_history = self._token_history[:batch_size]
+            self._prev_batch_size = batch_size
+
+        contexts = []
+        for i in range(batch_size):
+            history = self._token_history[i] if i < len(self._token_history) else []
+            if len(history) >= ngram_size:
+                contexts.append(history[-ngram_size:])
+            else:
+                contexts.append([0] * (ngram_size - len(history)) + history)
+        return contexts
+
+    def _record_sampled_tokens(self, sampled_tokens: torch.Tensor) -> None:
+        """Record sampled tokens into internal history for V1 context tracking."""
+        for i in range(sampled_tokens.shape[0]):
+            token = sampled_tokens[i].item()
+            if i < len(self._token_history):
+                self._token_history[i].append(token)
+
     def _apply_watermarking(
         self, logits: torch.Tensor, sampling_metadata: SamplingMetadata
     ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
-        """Apply watermarking by directly sampling tokens and forcing selection.
-
-        Returns:
-            tuple: (watermarked_logits, sampled_tokens)
-                - watermarked_logits: Modified logits for fallback to parent sampler
-                - sampled_tokens: Directly sampled tokens if watermarking applied, None otherwise
-        """
+        """Apply watermarking by directly sampling tokens and forcing selection."""
 
         try:
-            # Extract sampling parameters
             temperature, top_p = self._extract_sampling_params(sampling_metadata)
 
-            # Only apply watermarking for non-greedy sampling
             if temperature <= 0.01:
-                if self.debug:
-                    logger.debug("Skipping watermarking for greedy sampling")
                 return logits, None
 
-            # Extract n-gram contexts
+            batch_size = logits.shape[0]
+
             ngram_contexts = self._extract_ngram_contexts(sampling_metadata)
 
             if not ngram_contexts:
-                if self.debug:
-                    logger.debug("No n-gram contexts found, skipping watermarking")
-                return logits, None
+                ngram_contexts = self._build_ngram_contexts_from_history(batch_size)
 
-            if self.debug:
-                logger.debug(
-                    f"About to apply watermarking with {len(ngram_contexts)} contexts"
-                )
-
-            # Apply watermarking by direct token sampling
-            batch_size = logits.shape[0]
             if len(ngram_contexts) != batch_size:
-                if self.debug:
-                    logger.debug(
-                        f"Mismatch: {len(ngram_contexts)} contexts vs {batch_size} batch size"
-                    )
                 return logits, None
 
-            # Convert to tensor
             ngram_tokens = torch.tensor(
                 ngram_contexts, dtype=torch.long, device=logits.device
             )
 
-            # Use the watermark generator to sample tokens
             sampled_tokens = self.watermark_generator.sample_next(
                 logits.to(torch.float32), ngram_tokens, temperature, top_p
             )
 
-            # Commenting this out since we are constructing SamplerOutput directly
-            # with our watermarked tokens
+            self._record_sampled_tokens(sampled_tokens)
 
-            # if sampled_tokens is not None:
-            #     # Force selection of watermarked tokens by zeroing out all other logits
-            #     watermarked_logits = torch.full_like(logits, -float("inf"))
-            #     batch_indices = torch.arange(batch_size, device=logits.device)
-            #     # Flatten sampled_tokens if it's nested (e.g., [[6660], [388]] -> [6660, 388])
-            #     if sampled_tokens.dim() > 1:
-            #         sampled_tokens = sampled_tokens.squeeze(-1)
-            #     watermarked_logits[batch_indices, sampled_tokens] = 0.0
-
-            #     if self.debug:
-            #         logger.debug(
-            #             f"Applied watermarking: selected tokens {sampled_tokens.tolist()}"
-            #         )
-
-            #     return watermarked_logits, sampled_tokens
-            # else:
-            #     if self.debug:
-            #         logger.debug("Watermark sampling returned None")
-            #     return logits, None
             return logits, sampled_tokens
 
         except Exception as e:
-            logger.error(f"Error in watermarking: {e}")
+            logger.warning(f"Watermarking failed, falling back to default sampling: {e}")
             return logits, None
 
     def _create_v0_sampler_output(
@@ -555,70 +538,57 @@ class WatermarkedLLM:
     def _replace_sampler(self):
         """Replace vLLM's sampler with our watermark sampler."""
         try:
-            # Create our watermark sampler
             watermark_sampler = WatermarkSampler(
                 watermark_generator=self.watermark_generator, debug=self.debug
             )
 
-            # Find and replace samplers in the engine
-            if hasattr(self.llm, "llm_engine"):
-                engine = self.llm.llm_engine
-                logger.info(f"Engine: {engine}")
-                # Navigate to model executor and find samplers
-                samplers_replaced = 0
+            if not hasattr(self.llm, "llm_engine"):
+                logger.error("No llm_engine found on LLM instance")
+                return
 
-                if hasattr(engine, "model_executor"):
-                    # V0 structure
-                    model_executor = engine.model_executor
-                    logger.info(f"Model executor: {model_executor}")
-                    samplers_replaced += self._replace_samplers_in_executor(
-                        model_executor, watermark_sampler
+            engine = self.llm.llm_engine
+            logger.info(f"Engine type: {type(engine).__name__}")
+
+            executors = []
+            replaced_ids = set()
+
+            if hasattr(engine, "engine_core"):
+                ec = engine.engine_core
+                logger.info(f"Engine core type: {type(ec).__name__}")
+                if hasattr(ec, "engine_core"):
+                    inner = ec.engine_core
+                    if hasattr(inner, "model_executor"):
+                        executors.append(("engine_core.engine_core.model_executor", inner.model_executor))
+                if hasattr(ec, "model_executor"):
+                    executors.append(("engine_core.model_executor", ec.model_executor))
+
+            if hasattr(engine, "model_executor"):
+                executors.append(("engine.model_executor", engine.model_executor))
+
+            samplers_replaced = 0
+            for path, executor in executors:
+                if id(executor) in replaced_ids:
+                    logger.info(f"  {path}: same executor already processed, skipping")
+                    continue
+                replaced_ids.add(id(executor))
+                logger.info(f"  {path}: {type(executor).__name__}")
+                count = self._replace_samplers_in_executor(executor, watermark_sampler)
+                samplers_replaced += count
+                logger.info(f"  {path}: replaced {count} sampler(s)")
+
+            if samplers_replaced > 0:
+                logger.info(
+                    f"Successfully replaced {samplers_replaced} sampler(s) with WatermarkSampler"
+                )
+            else:
+                logger.warning("No samplers found to replace")
+                if hasattr(engine, "engine_core") and "SyncMPClient" in str(
+                    type(engine.engine_core)
+                ):
+                    logger.warning(
+                        "Detected vLLM V1 with multiprocessing. "
+                        "Set VLLM_ENABLE_V1_MULTIPROCESSING=0 for watermarking."
                     )
-
-                elif hasattr(engine, "engine_core"):
-                    # V1 structure
-                    logger.info(f"Engine core: {engine.engine_core}")
-                    engine_core = engine.engine_core
-
-                    # Debug: Log engine_core structure
-                    if self.debug:
-                        logger.debug(f"Engine core type: {type(engine_core)}")
-                        logger.debug(f"Engine core attributes: {dir(engine_core)}")
-
-                    # Handle V1 multiprocessing case (SyncMPClient)
-                    if hasattr(engine_core, "engine_core"):
-                        # Multiprocessing case - get the actual engine core
-                        actual_engine_core = engine_core.engine_core
-                        logger.info(f"Actual engine core (MP): {actual_engine_core}")
-                        if hasattr(actual_engine_core, "model_executor"):
-                            model_executor = actual_engine_core.model_executor
-                            logger.info(f"Model executor (MP): {model_executor}")
-                            samplers_replaced += self._replace_samplers_in_executor(
-                                model_executor, watermark_sampler
-                            )
-                    elif hasattr(engine_core, "model_executor"):
-                        # Single process case
-                        model_executor = engine_core.model_executor
-                        logger.info(f"Model executor: {model_executor}")
-                        samplers_replaced += self._replace_samplers_in_executor(
-                            model_executor, watermark_sampler
-                        )
-
-                if samplers_replaced > 0:
-                    logger.info(
-                        f"Successfully replaced {samplers_replaced} sampler(s) with WatermarkSampler"
-                    )
-                else:
-                    logger.warning("No samplers found to replace")
-
-                    # Check if this is a V1 multiprocessing issue
-                    if hasattr(engine, "engine_core") and "SyncMPClient" in str(
-                        type(engine.engine_core)
-                    ):
-                        logger.warning(
-                            "Detected vLLM V1 with multiprocessing enabled. "
-                            "For watermarking to work, please set: VLLM_ENABLE_V1_MULTIPROCESSING=0"
-                        )
 
         except Exception as e:
             logger.error(f"Failed to replace sampler: {e}")

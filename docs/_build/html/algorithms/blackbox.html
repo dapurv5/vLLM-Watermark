@@ -1,0 +1,211 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Black-Box Watermarking &mdash; vLLM-Watermark 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=85bfff7c" />
+
+  
+    <link rel="shortcut icon" href="../_static/vLLM-WM-Logo.png"/>
+    <link rel="canonical" href="/vLLM-Watermark/algorithms/blackbox.html" />
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../_static/documentation_options.js?v=01f34227"></script>
+      <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="../_static/custom.js?v=192d2930"></script>
+      <script>window.MathJax = {"tex": {"equationNumbers": {"autoNumber": "AMS"}, "extensions": ["AMSmath.js", "AMSsymbols.js"]}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Alignment Resampling" href="alignment_resampling.html" />
+    <link rel="prev" title="SWEET Watermarking" href="sweet.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #437eb4" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            vLLM-Watermark
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performance evaluation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../benchmark.html">Performance Benchmarking</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Watermarking algorithms</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="openai.html">OpenAI/Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_dr.html">Randomized Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="maryland.html">KGW (Maryland) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="pf.html">Permute-and-Flip (PF) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="unigram.html">Unigram Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="synthid.html">SynthID Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dip.html">DiPmark (DIP) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="sweet.html">SWEET Watermarking</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Black-Box Watermarking</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#theory">Theory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#paper-reference">Paper reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#example-code">Example code</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="alignment_resampling.html">Alignment Resampling</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #437eb4" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">vLLM-Watermark</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Black-Box Watermarking</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/algorithms/blackbox.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="black-box-watermarking">
+<h1>Black-Box Watermarking<a class="headerlink" href="#black-box-watermarking" title="Link to this heading"></a></h1>
+<p>Distortion-free watermarking via best-of-<span class="math notranslate nohighlight">\(m\)</span> rejection sampling. The model’s sampling distribution is completely unmodified — the watermark is embedded by selecting the highest-scoring candidate from <span class="math notranslate nohighlight">\(m\)</span> independent generations.</p>
+<div style="margin: 20px 0; line-height: 1.8;">
+    <p style="margin: 5px 0; font-size: 14px;">
+        <strong>Example code:</strong>
+        <a href="https://github.com/dapurv5/vLLM-Watermark/blob/main/examples/example_blackbox.py" target="_blank" style="display: inline-block; background-color: #6c757d; color: white; padding: 5px 12px; border-radius: 3px; font-size: 12px; text-decoration: none; margin-left: 8px;">📓 View On GitHub</a>
+    </p>
+    <p style="margin: 5px 0; font-size: 14px;">
+        <strong>Author:</strong> Bahri &amp; Wieting
+    </p>
+</div><section id="theory">
+<h2>Theory<a class="headerlink" href="#theory" title="Link to this heading"></a></h2>
+<p>The black-box watermark generates <span class="math notranslate nohighlight">\(m\)</span> candidate sequences from the unmodified model and selects the one with the highest score under a keyed pseudorandom function (PRF).</p>
+<p>For each candidate sequence, the score is computed by:</p>
+<ol class="arabic simple">
+<li><p>Extracting all n-grams from the sequence</p></li>
+<li><p>Hashing each n-gram with the secret key to produce a uniform PRF value <span class="math notranslate nohighlight">\(u_i \in [0, 1]\)</span></p></li>
+<li><p>Computing the Irwin-Hall CDF of the sum <span class="math notranslate nohighlight">\(\sum_i u_i\)</span></p></li>
+</ol>
+<p>The candidate with the highest score is returned. Under no watermark, scores are uniform on <span class="math notranslate nohighlight">\([0, 1]\)</span>. With <span class="math notranslate nohighlight">\(m\)</span> candidates, the expected maximum score is <span class="math notranslate nohighlight">\(\approx m/(m+1)\)</span>.</p>
+<p><strong>Detection</strong> recomputes the same PRF score on the text. The p-value is <span class="math notranslate nohighlight">\(1 - \text{score}\)</span>.</p>
+<p>The key property is <strong>zero distortion</strong>: since all <span class="math notranslate nohighlight">\(m\)</span> candidates are drawn from the original model distribution, the selected output is also a valid sample from the original distribution. The trade-off is computational cost — generation is <span class="math notranslate nohighlight">\(m\)</span> times more expensive.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Detection power depends on <code class="docutils literal notranslate"><span class="pre">n_candidates</span></code>: <span class="math notranslate nohighlight">\(m=16\)</span> gives weak detection (score <span class="math notranslate nohighlight">\(\approx 0.94\)</span>), <span class="math notranslate nohighlight">\(m=128\)</span> gives strong detection (score <span class="math notranslate nohighlight">\(\approx 0.992\)</span>), <span class="math notranslate nohighlight">\(m=256\)</span> gives very strong detection (score <span class="math notranslate nohighlight">\(\approx 0.996\)</span>).</p>
+</div>
+</section>
+<section id="paper-reference">
+<h2>Paper reference<a class="headerlink" href="#paper-reference" title="Link to this heading"></a></h2>
+<p>Bahri, D. &amp; Wieting, J. (2026). A Watermark for Black-Box Language Models. <em>TMLR</em> (arXiv:2410.02099). https://arxiv.org/abs/2410.02099</p>
+</section>
+<section id="example-code">
+<h2>Example code<a class="headerlink" href="#example-code" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;VLLM_USE_V1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;1&quot;</span>
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;VLLM_ENABLE_V1_MULTIPROCESSING&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;0&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">vllm</span><span class="w"> </span><span class="kn">import</span> <span class="n">LLM</span><span class="p">,</span> <span class="n">SamplingParams</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vllm_watermark.core</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DetectionAlgorithm</span><span class="p">,</span>
+    <span class="n">WatermarkedLLMs</span><span class="p">,</span>
+    <span class="n">WatermarkingAlgorithm</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">vllm_watermark.watermark_detectors</span><span class="w"> </span><span class="kn">import</span> <span class="n">WatermarkDetectors</span>
+
+<span class="n">llm</span> <span class="o">=</span> <span class="n">LLM</span><span class="p">(</span><span class="n">model</span><span class="o">=</span><span class="s2">&quot;meta-llama/Llama-3.2-1B&quot;</span><span class="p">,</span> <span class="n">enforce_eager</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">max_model_len</span><span class="o">=</span><span class="mi">1024</span><span class="p">)</span>
+
+<span class="c1"># n_candidates controls detection power vs. generation cost</span>
+<span class="n">wm_llm</span> <span class="o">=</span> <span class="n">WatermarkedLLMs</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span>
+    <span class="n">algo</span><span class="o">=</span><span class="n">WatermarkingAlgorithm</span><span class="o">.</span><span class="n">BLACKBOX</span><span class="p">,</span>
+    <span class="n">hash_key</span><span class="o">=</span><span class="mi">15485863</span><span class="p">,</span>
+    <span class="n">ngram</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">n_candidates</span><span class="o">=</span><span class="mi">128</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">detector</span> <span class="o">=</span> <span class="n">WatermarkDetectors</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+    <span class="n">algo</span><span class="o">=</span><span class="n">DetectionAlgorithm</span><span class="o">.</span><span class="n">BLACKBOX</span><span class="p">,</span>
+    <span class="n">model</span><span class="o">=</span><span class="n">llm</span><span class="p">,</span>
+    <span class="n">ngram</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span>
+    <span class="n">hash_key</span><span class="o">=</span><span class="mi">15485863</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="mf">0.02</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">prompts</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Write about machine learning applications&quot;</span><span class="p">]</span>
+<span class="n">sampling_params</span> <span class="o">=</span> <span class="n">SamplingParams</span><span class="p">(</span><span class="n">temperature</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">top_p</span><span class="o">=</span><span class="mf">0.95</span><span class="p">,</span> <span class="n">max_tokens</span><span class="o">=</span><span class="mi">128</span><span class="p">)</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">wm_llm</span><span class="o">.</span><span class="n">generate</span><span class="p">(</span><span class="n">prompts</span><span class="p">,</span> <span class="n">sampling_params</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">outputs</span><span class="p">:</span>
+    <span class="n">generated_text</span> <span class="o">=</span> <span class="n">output</span><span class="o">.</span><span class="n">outputs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">text</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detect</span><span class="p">(</span><span class="n">generated_text</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Watermarked: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;is_watermarked&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2">, P-value: </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;pvalue&#39;</span><span class="p">]</span><span class="si">:</span><span class="s2">.6f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="sweet.html" class="btn btn-neutral float-left" title="SWEET Watermarking" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="alignment_resampling.html" class="btn btn-neutral float-right" title="Alignment Resampling" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Apurv Verma.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

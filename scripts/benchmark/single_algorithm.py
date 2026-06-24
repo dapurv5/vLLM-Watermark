@@ -92,44 +92,79 @@ def run_single_algorithm_benchmark(
         algorithm_config = ALGORITHM_CONFIGS[algorithm_name]
         print(f"   Configuration: {algorithm_config.get_config_string()}")
 
-        # Initialize model
-        update_progress("initializing_model")
-        llm = initialize_model(model_name, gpu_memory_utilization)
-        tokenizer = llm.get_tokenizer()
+        # Check for saved texts (resume from previous generation)
+        texts_file = os.path.join(output_dir, f"{algorithm_name}_texts.json")
+        resumed = False
 
-        # Step 1: Generate unwatermarked text (baseline) - MUST be done first before wrapping
-        update_progress("generating_unwatermarked", {"total_prompts": len(prompts)})
-        unwm_outputs, unwm_generation_time = generate_texts(
-            llm, prompts, sampling_params, is_watermarked=False
-        )
+        if os.path.exists(texts_file):
+            update_progress("resuming_from_saved_texts")
+            print(f"   📥 Resuming from saved texts: {texts_file}")
+            with open(texts_file) as f:
+                saved_texts = json.load(f)
+            unwm_texts = saved_texts["unwatermarked_texts"]
+            wm_texts = saved_texts["watermarked_texts"]
+            unwm_generation_time = saved_texts.get("unwm_generation_time", 0.0)
+            wm_generation_time = saved_texts.get("wm_generation_time", 0.0)
+            resumed = True
+            print(f"   📥 Loaded {len(unwm_texts)} unwatermarked + {len(wm_texts)} watermarked texts")
 
-        # Step 2: Create watermarked LLM (this modifies the original LLM)
-        update_progress("creating_watermark")
-        print("   🌊 Creating watermarked LLM...")
-        wm_llm = WatermarkedLLMs.create(
-            llm, algo=algorithm_config.algorithm, **algorithm_config.params
-        )
+            # Still need model for detector (tokenizer + vocab_size)
+            update_progress("initializing_model")
+            llm = initialize_model(model_name, gpu_memory_utilization)
+            tokenizer = llm.get_tokenizer()
+        else:
+            # Full generation path
+            update_progress("initializing_model")
+            llm = initialize_model(model_name, gpu_memory_utilization)
+            tokenizer = llm.get_tokenizer()
 
-        # Step 3: Generate watermarked text
-        update_progress("generating_watermarked", {"total_prompts": len(prompts)})
-        wm_outputs, wm_generation_time = generate_texts(
-            wm_llm, prompts, sampling_params, is_watermarked=True
-        )
+            # Step 1: Generate unwatermarked text (baseline)
+            update_progress("generating_unwatermarked", {"total_prompts": len(prompts)})
+            unwm_outputs, unwm_generation_time = generate_texts(
+                llm, prompts, sampling_params, is_watermarked=False
+            )
+
+            # Step 2: Create watermarked LLM (modifies original LLM)
+            update_progress("creating_watermark")
+            print("   🌊 Creating watermarked LLM...")
+            wm_llm = WatermarkedLLMs.create(
+                llm, algo=algorithm_config.algorithm, **algorithm_config.params
+            )
+
+            # Step 3: Generate watermarked text
+            update_progress("generating_watermarked", {"total_prompts": len(prompts)})
+            wm_outputs, wm_generation_time = generate_texts(
+                wm_llm, prompts, sampling_params, is_watermarked=True
+            )
+
+            # Extract generated texts
+            update_progress("extracting_texts")
+            unwm_texts = [output.outputs[0].text for output in unwm_outputs]
+            wm_texts = [output.outputs[0].text for output in wm_outputs]
+
+            # Save texts for future resume / S3 backup
+            update_progress("saving_texts")
+            print(f"   💾 Saving generated texts to {texts_file}")
+            with open(texts_file, "w") as f:
+                json.dump({
+                    "algorithm": algorithm_name,
+                    "model_name": model_name,
+                    "unwatermarked_texts": unwm_texts,
+                    "watermarked_texts": wm_texts,
+                    "unwm_generation_time": unwm_generation_time,
+                    "wm_generation_time": wm_generation_time,
+                    "num_samples": len(prompts),
+                }, f)
 
         # Step 4: Create detector
         update_progress("creating_detector")
         print("   🔍 Creating detector...")
         detector = WatermarkDetectors.create(
             algo=algorithm_config.detection_algorithm,
-            model=llm,  # Use original llm reference for detector
+            model=llm,
             threshold=detection_threshold,
             **algorithm_config.params,
         )
-
-        # Step 5: Extract generated texts
-        update_progress("extracting_texts")
-        unwm_texts = [output.outputs[0].text for output in unwm_outputs]
-        wm_texts = [output.outputs[0].text for output in wm_outputs]
 
         # Count tokens
         total_input_tokens = sum(len(tokenizer.encode(prompt)) for prompt in prompts)
@@ -219,10 +254,6 @@ def main():
     model_name = data["model_name"]
     detection_threshold = data["detection_threshold"]
     gpu_memory_utilization = data["gpu_memory_utilization"]
-
-    # Force vLLM V0 for MARYLAND_L (logit processors unsupported in V1)
-    if algorithm_name == "MARYLAND_L":
-        os.environ["VLLM_USE_V1"] = "0"
 
     # Recreate sampling params
     sampling_params = SamplingParams(**sampling_params_dict)

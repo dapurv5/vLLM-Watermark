@@ -18,8 +18,12 @@ pip install tabulate
 |-----------|------------|-------------|
 | `OPENAI` | `ngram`, `seed`, `payload` | Power-law transformation with n-gram hashing |
 | `MARYLAND` | `ngram`, `seed`, `gamma`, `delta` | Statistical watermarking with hypothesis testing |
-| `MARYLAND_L` | `ngram`, `seed`, `gamma`, `delta` | Maryland algorithm with logit processing |
 | `PF` | `ngram`, `seed`, `payload` | Prefix-free coding watermarking |
+| `UNIGRAM` | `ngram`, `seed`, `gamma`, `delta`, `hash_key` | Unigram-based statistical watermarking |
+| `SYNTHID` | `ngram`, `seed` | Google DeepMind's tournament-based watermarking |
+| `DIP` | `ngram`, `seed`, `alpha`, `gamma`, `hash_key` | Distributional-preserving watermarking |
+| `SWEET` | `ngram`, `seed`, `gamma`, `delta`, `hash_key`, `entropy_threshold` | Entropy-aware statistical watermarking |
+| `BLACKBOX` | `ngram`, `hash_key`, `n_candidates` | Black-box watermark detection via candidate search |
 
 ## Usage
 
@@ -57,7 +61,7 @@ python scripts/benchmark/benchmark_watermarks.py \
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `model_name` | `meta-llama/Llama-3.2-1B` | HuggingFace model name |
-| `algorithms` | `["OPENAI", "MARYLAND", "MARYLAND_L", "PF"]` | List of algorithms to benchmark |
+| `algorithms` | All 8 supported algorithms | List of algorithms to benchmark |
 | `num_samples` | `5000` | Number of samples from C4 dataset |
 | `max_tokens` | `512` | Maximum tokens to generate (fixed) |
 | `seed` | `42` | Random seed (fixed) |

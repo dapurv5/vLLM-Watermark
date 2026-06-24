@@ -24,8 +24,12 @@ class WatermarkGenerators:
         salt_key: int = 35317,
         # Algorithm-specific parameters
         payload: int = 0,  # For OpenAI
-        gamma: float = 0.5,  # For Maryland
-        delta: float = 1.0,  # For Maryland
+        gamma: float = 0.5,  # For Maryland / Unigram / DIP / SWEET
+        delta: float = 1.0,  # For Maryland / SWEET
+        hash_key: int = 15485863,  # For Unigram / DIP / SWEET
+        alpha: float = 0.45,  # For DIP
+        entropy_threshold: float = 3.0,  # For SWEET
+        ignore_history: bool = False,  # For DIP
         **kwargs,
     ):
         """Create a watermark generator with automatic configuration.
@@ -118,25 +122,6 @@ class WatermarkGenerators:
                 delta=delta,
                 **kwargs,
             )
-        elif algo == WatermarkingAlgorithm.MARYLAND_L:
-            # For MARYLAND_L, we return the logit processor directly
-            # instead of a generator, since this will be used differently
-            from vllm_watermark.logit_processors import MarylandLogitProcessor
-
-            vocab_size = WatermarkUtils.infer_vocab_size(model, tokenizer)
-
-            return MarylandLogitProcessor(
-                vocab_size=vocab_size,
-                gamma=gamma,
-                delta=delta,
-                ngram=ngram,
-                seed=seed,
-                salt_key=salt_key,
-                payload=payload,
-                seeding=seeding,
-                device="cuda" if torch.cuda.is_available() else "cpu",
-                **kwargs,
-            )
         elif algo == WatermarkingAlgorithm.PF:
             from .pf_generator import PFGenerator
 
@@ -147,6 +132,65 @@ class WatermarkGenerators:
                 seed=seed,
                 seeding=seeding,
                 salt_key=salt_key,
+                **kwargs,
+            )
+        elif algo == WatermarkingAlgorithm.UNIGRAM:
+            from .unigram_generator import UnigramGenerator
+
+            return UnigramGenerator(
+                model=model,
+                tokenizer=tokenizer,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                gamma=gamma,
+                delta=delta,
+                hash_key=hash_key,
+                **kwargs,
+            )
+        elif algo == WatermarkingAlgorithm.SYNTHID:
+            from .synthid_generator import SynthIDGenerator
+
+            return SynthIDGenerator(
+                model=model,
+                tokenizer=tokenizer,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                **kwargs,
+            )
+        elif algo == WatermarkingAlgorithm.DIP:
+            from .dip_generator import DIPGenerator
+
+            return DIPGenerator(
+                model=model,
+                tokenizer=tokenizer,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                alpha=alpha,
+                gamma=gamma,
+                hash_key=hash_key,
+                ignore_history=ignore_history,
+                **kwargs,
+            )
+        elif algo == WatermarkingAlgorithm.SWEET:
+            from .sweet_generator import SWEETGenerator
+
+            return SWEETGenerator(
+                model=model,
+                tokenizer=tokenizer,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                gamma=gamma,
+                delta=delta,
+                hash_key=hash_key,
+                entropy_threshold=entropy_threshold,
                 **kwargs,
             )
         else:

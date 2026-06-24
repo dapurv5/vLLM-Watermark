@@ -68,7 +68,6 @@ def get_algorithm_detection_mapping():
         WatermarkingAlgorithm.OPENAI: DetectionAlgorithm.OPENAI_Z,
         WatermarkingAlgorithm.OPENAI_DR: DetectionAlgorithm.OPENAI_Z,
         WatermarkingAlgorithm.MARYLAND: DetectionAlgorithm.MARYLAND_Z,
-        WatermarkingAlgorithm.MARYLAND_L: DetectionAlgorithm.MARYLAND_Z,
         WatermarkingAlgorithm.PF: DetectionAlgorithm.PF,
     }
 

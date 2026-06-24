@@ -1,12 +1,8 @@
+:orphan:
+
 Watermarking Algorithms
 =======================
 
 This section describes each implemented watermarking algorithm with theoretical foundations and practical examples.
 
-.. toctree::
-   :maxdepth: 1
-
-   openai
-   openai_dr
-   maryland
-   pf
+See the sidebar for the full list of algorithms.

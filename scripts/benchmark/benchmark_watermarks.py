@@ -175,7 +175,7 @@ class WatermarkBenchmarker:
         """Run comprehensive benchmark on specified algorithms."""
 
         if algorithms is None:
-            algorithms = ["OPENAI", "MARYLAND", "MARYLAND_L", "PF"]
+            algorithms = ["OPENAI", "MARYLAND", "PF"]
         elif isinstance(algorithms, str):
             # Parse space-separated string into list
             algorithms = algorithms.split()

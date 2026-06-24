@@ -24,8 +24,12 @@ class WatermarkDetectors:
         threshold: float = 0.05,
         # Algorithm-specific parameters
         payload: int = 0,  # For OpenAI
-        gamma: float = 0.5,  # For Maryland
-        delta: float = 1.0,  # For Maryland
+        gamma: float = 0.5,  # For Maryland / Unigram / DIP / SWEET
+        delta: float = 1.0,  # For Maryland / Unigram
+        hash_key: int = 15485863,  # For Unigram / DIP / SWEET
+        ignore_history: bool = False,  # For DIP
+        alpha: float = 0.45,  # For DIP (generator-only, consumed here to prevent leakage)
+        entropy_threshold: float = 3.0,  # For SWEET (generator-only, consumed here)
         **kwargs,
     ):
         """Create a watermark detector with automatic configuration.
@@ -157,6 +161,74 @@ class WatermarkDetectors:
                 seed=seed,
                 seeding=seeding,
                 salt_key=salt_key,
+                threshold=threshold,
+                **kwargs,
+            )
+        elif algo in (DetectionAlgorithm.UNIGRAM, DetectionAlgorithm.UNIGRAM_Z):
+            from .unigram_detector import UnigramDetector
+
+            return UnigramDetector(
+                tokenizer=tokenizer,
+                vocab_size=vocab_size,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                gamma=gamma,
+                delta=delta,
+                hash_key=hash_key,
+                threshold=threshold,
+                **kwargs,
+            )
+        elif algo == DetectionAlgorithm.SYNTHID:
+            from .synthid_detector import SynthIDDetector
+
+            return SynthIDDetector(
+                tokenizer=tokenizer,
+                vocab_size=vocab_size,
+                ngram=ngram,
+                threshold=threshold,
+                **kwargs,
+            )
+        elif algo == DetectionAlgorithm.DIP:
+            from .dip_detector import DIPDetector
+
+            return DIPDetector(
+                tokenizer=tokenizer,
+                vocab_size=vocab_size,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                gamma=gamma,
+                hash_key=hash_key,
+                ignore_history=ignore_history,
+                threshold=threshold,
+                **kwargs,
+            )
+        elif algo == DetectionAlgorithm.SWEET:
+            from .sweet_detector import SWEETDetector
+
+            return SWEETDetector(
+                tokenizer=tokenizer,
+                vocab_size=vocab_size,
+                ngram=ngram,
+                seed=seed,
+                seeding=seeding,
+                salt_key=salt_key,
+                gamma=gamma,
+                hash_key=hash_key,
+                threshold=threshold,
+                **kwargs,
+            )
+        elif algo == DetectionAlgorithm.BLACKBOX:
+            from .blackbox_detector import BlackBoxDetector
+
+            ctx_len = kwargs.pop("ctx_len", ngram)
+            return BlackBoxDetector(
+                tokenizer=tokenizer,
+                key=hash_key,
+                ctx_len=ctx_len,
                 threshold=threshold,
                 **kwargs,
             )

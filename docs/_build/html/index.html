@@ -8,7 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>vLLM-Watermark &mdash; vLLM-Watermark 0.1.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
       <link rel="stylesheet" type="text/css" href="_static/custom.css?v=85bfff7c" />
 
   
@@ -17,11 +17,9 @@
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
       <script src="_static/documentation_options.js?v=01f34227"></script>
-      <script src="_static/doctools.js?v=9bcbadda"></script>
-      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
       <script src="_static/custom.js?v=192d2930"></script>
-      <script>window.MathJax = {"tex": {"equationNumbers": {"autoNumber": "AMS"}, "extensions": ["AMSmath.js", "AMSsymbols.js"]}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
-      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -61,6 +59,12 @@
 <li class="toctree-l1"><a class="reference internal" href="algorithms/openai_dr.html">Randomized Gumbel Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/maryland.html">KGW (Maryland) Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/pf.html">Permute-and-Flip (PF) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/unigram.html">Unigram Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/synthid.html">SynthID Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/dip.html">DiPmark (DIP) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/sweet.html">SWEET Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/blackbox.html">Black-Box Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/alignment_resampling.html">Alignment Resampling</a></li>
 </ul>
 
         </div>
@@ -111,11 +115,16 @@
 <li class="toctree-l1"><a class="reference internal" href="algorithms/openai_dr.html">Randomized Gumbel Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/maryland.html">KGW (Maryland) Watermarking</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithms/pf.html">Permute-and-Flip (PF) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/unigram.html">Unigram Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/synthid.html">SynthID Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/dip.html">DiPmark (DIP) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/sweet.html">SWEET Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/blackbox.html">Black-Box Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/alignment_resampling.html">Alignment Resampling</a></li>
 </ul>
 </div>
 <section id="supported-algorithms">
 <h2>Supported Algorithms<a class="headerlink" href="#supported-algorithms" title="Link to this heading"></a></h2>
-<p>The following table summarizes the three main watermarking algorithms implemented in this package:</p>
 <table class="algorithm-comparison docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Algorithm</p></th>
@@ -125,16 +134,44 @@
 </thead>
 <tbody>
 <tr class="row-even"><td><p><strong>Gumbel/OpenAI</strong></p></td>
-<td><p>Uses Gumbel-Max trick for deterministic sampling</p></td>
+<td><p>Gumbel-Max trick for deterministic sampling</p></td>
 <td><p><a class="reference external" href="https://scottaaronson.blog/?p=6823">Aaronson (2023)</a></p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>KGW/Maryland</strong></p></td>
-<td><p>Green-red token partitioning with logit bias</p></td>
+<tr class="row-odd"><td><p><strong>Randomized Gumbel</strong></p></td>
+<td><p>Gumbel with double randomization for diversity</p></td>
+<td><p><a class="reference external" href="https://arxiv.org/pdf/2506.04462">Verma &amp; Phan (2025)</a></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>KGW/Maryland</strong></p></td>
+<td><p>Context-dependent green-red list with logit bias</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/pdf/2301.10226">Kirchenbauer et al. (2023)</a></p></td>
 </tr>
-<tr class="row-even"><td><p><strong>PF (Permute-and-Flip)</strong></p></td>
+<tr class="row-odd"><td><p><strong>PF (Permute-and-Flip)</strong></p></td>
 <td><p>Prefix-free coding with token permutations</p></td>
 <td><p><a class="reference external" href="https://arxiv.org/abs/2402.05864">Lean et al. (2024)</a></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Unigram</strong></p></td>
+<td><p>Context-independent fixed green-red list</p></td>
+<td><p><a class="reference external" href="https://arxiv.org/abs/2306.17439">Zhao et al. (2024)</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>SynthID</strong></p></td>
+<td><p>Multi-layer tournament watermarking (non-distortionary)</p></td>
+<td><p><a class="reference external" href="https://www.nature.com/articles/s41586-024-08025-4">Dathathri et al. (2024)</a></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>DIP (DiPmark)</strong></p></td>
+<td><p>Permutation-based probability redistribution</p></td>
+<td><p><a class="reference external" href="https://arxiv.org/abs/2310.07710">Wu et al. (2023)</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>SWEET</strong></p></td>
+<td><p>Entropy-selective green-list biasing</p></td>
+<td><p><a class="reference external" href="https://arxiv.org/abs/2305.15060">Lee et al. (2023)</a></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Black-Box</strong></p></td>
+<td><p>Best-of-m rejection sampling (zero distortion)</p></td>
+<td><p><a class="reference external" href="https://arxiv.org/abs/2410.02099">Bahri &amp; Wieting (2026)</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Alignment Resampling</strong></p></td>
+<td><p>Best-of-N with reward model (wraps any watermark)</p></td>
+<td><p><a class="reference external" href="https://arxiv.org/pdf/2506.04462">Verma &amp; Phan (2025)</a></p></td>
 </tr>
 </tbody>
 </table>

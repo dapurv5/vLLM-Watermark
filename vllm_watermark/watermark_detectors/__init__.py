@@ -7,6 +7,7 @@ from .factory import WatermarkDetectors
 from .maryland_detectors import MarylandDetector, MarylandDetectorZ
 from .openai_detectors import OpenaiDetector, OpenaiDetectorZ
 from .pf_detector import PFDetector
+from .synthid_detector import SynthIDDetector
 
 __all__ = [
     "WmDetector",
@@ -15,5 +16,6 @@ __all__ = [
     "OpenaiDetector",
     "OpenaiDetectorZ",
     "PFDetector",
+    "SynthIDDetector",
     "WatermarkDetectors",  # The main factory users should use
 ]
