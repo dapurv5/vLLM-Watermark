@@ -13,11 +13,36 @@
 
 ## Supported Algorithms
 
-| Algorithm | Description | Paper |
-|-----------|-------------|-------|
-| **Maryland** | Statistical watermarking with hypothesis testing | [A Watermark for Large Language Models](https://arxiv.org/pdf/2301.10226) |
-| **OpenAI** | Power-law transformation with n-gram hashing | [Gumbel Watermarking](https://scottaaronson.blog/?p=6823) |
-| **PF** | Prefix-free coding watermarking | [Permute-and-Flip Watermarking](https://arxiv.org/abs/2402.05864) |
+### Watermark Generators
+
+| Algorithm | `WatermarkingAlgorithm` | Description | Paper |
+|-----------|------------------------|-------------|-------|
+| **Gumbel / OpenAI** | `OPENAI` | Gumbel-Max trick for pseudo-random token selection | [Aaronson (2023)](https://scottaaronson.blog/?p=6823) |
+| **Randomized Gumbel** | `OPENAI_DR` | Double-randomization variant with enhanced output diversity | [Verma & Phan (2025)](https://arxiv.org/abs/2506.04462) |
+| **Maryland / KGW** | `MARYLAND` | Green/red list partitioning with logit bias | [Kirchenbauer et al. (2023)](https://arxiv.org/abs/2301.10226) |
+| **Permute-and-Flip** | `PF` | Prefix-free coding via vocabulary permutation-flip | [Lean et al. (2024)](https://arxiv.org/abs/2402.05864) |
+| **Unigram** | `UNIGRAM` | Context-independent fixed green list | [Zhao et al. (2023)](https://arxiv.org/abs/2306.17439) |
+| **SynthID** | `SYNTHID` | Multi-layer tournament sampling (Google DeepMind) | [Dathathri et al. (2024)](https://www.nature.com/articles/s41586-024-08025-4) |
+| **DiPmark** | `DIP` | Cumulative-probability quantile splitting | [Wu et al. (2023)](https://arxiv.org/abs/2310.07710) |
+| **SWEET** | `SWEET` | Entropy-selective green-list bias | [Lee et al. (2023)](https://arxiv.org/abs/2305.15060) |
+| **Black-Box** | `BLACKBOX` | Distortion-free best-of-m rejection sampling | [Bahri & Wieting (2026)](https://arxiv.org/abs/2410.02099) |
+
+### Watermark Detectors
+
+| Detector | `DetectionAlgorithm` | Description | Paper |
+|----------|---------------------|-------------|-------|
+| **OpenAI Gamma** | `OPENAI` | Exact Gamma test on EXP scores | [Aaronson (2023)](https://scottaaronson.blog/?p=6823) |
+| **OpenAI Z-score** | `OPENAI_Z` | Z-score approximation of EXP scores | [Aaronson (2023)](https://scottaaronson.blog/?p=6823) |
+| **OpenAI Power Law** | `OPENAI_PL` | Near-optimal power-law statistic for EXP scores | [Lattimore (2024)](https://arxiv.org/abs/2603.30017) |
+| **Maryland** | `MARYLAND` | Exact binomial test on green-list token counts | [Kirchenbauer et al. (2023)](https://arxiv.org/abs/2301.10226) |
+| **Maryland Z-score** | `MARYLAND_Z` | Z-score approximation of green-list counts | [Kirchenbauer et al. (2023)](https://arxiv.org/abs/2301.10226) |
+| **Permute-and-Flip** | `PF` | Likelihood-ratio test for PF watermark | [Lean et al. (2024)](https://arxiv.org/abs/2402.05864) |
+| **Unigram** | `UNIGRAM` | Exact test for fixed green list | [Zhao et al. (2023)](https://arxiv.org/abs/2306.17439) |
+| **Unigram Z-score** | `UNIGRAM_Z` | Z-score variant for fixed green list | [Zhao et al. (2023)](https://arxiv.org/abs/2306.17439) |
+| **SynthID** | `SYNTHID` | Tournament mean detector | [Dathathri et al. (2024)](https://www.nature.com/articles/s41586-024-08025-4) |
+| **DiPmark** | `DIP` | Hypothesis test on quantile-split scores | [Wu et al. (2023)](https://arxiv.org/abs/2310.07710) |
+| **SWEET** | `SWEET` | Entropy-filtered green-list detector | [Lee et al. (2023)](https://arxiv.org/abs/2305.15060) |
+| **Black-Box** | `BLACKBOX` | Score-based detector for best-of-m | [Bahri & Wieting (2026)](https://arxiv.org/abs/2410.02099) |
 
 ## Installation
 
