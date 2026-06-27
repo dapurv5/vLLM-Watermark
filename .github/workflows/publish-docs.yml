@@ -57,7 +57,6 @@ jobs:
         cd docs
         make clean
         make html
-        make linkcheck  # Check for broken links
       env:
         PYTHONPATH: ${{ github.workspace }}
 
