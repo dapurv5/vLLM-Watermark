@@ -18,13 +18,13 @@ Tiny. Hackable. Lightning-fast watermarking for researchers built on vLLM
    :caption: Performance evaluation
 
    benchmark
+   detector_comparison
 
 .. toctree::
    :maxdepth: 1
    :caption: Watermarking algorithms
 
    algorithms/openai
-   algorithms/openai_pl
    algorithms/openai_dr
    algorithms/maryland
    algorithms/pf

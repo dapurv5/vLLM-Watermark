@@ -187,6 +187,7 @@ class WatermarkSampler(BaseSampler):
     ) -> tuple[float, float]:
         """Extract temperature and top_p from sampling metadata."""
         try:
+            # V0 path: seq_groups with SamplingParams objects
             if (
                 hasattr(sampling_metadata, "seq_groups")
                 and sampling_metadata.seq_groups
@@ -196,8 +197,17 @@ class WatermarkSampler(BaseSampler):
                 temperature = getattr(sampling_params, "temperature", 1.0)
                 top_p = getattr(sampling_params, "top_p", 1.0)
                 return temperature, top_p
-            else:
-                return 1.0, 1.0
+
+            # V1 path: temperature/top_p are direct torch.Tensor attributes
+            temperature = 1.0
+            top_p = 1.0
+            if hasattr(sampling_metadata, "temperature") and sampling_metadata.temperature is not None:
+                t = sampling_metadata.temperature
+                temperature = t[0].item() if t.numel() > 0 else 1.0
+            if hasattr(sampling_metadata, "top_p") and sampling_metadata.top_p is not None:
+                tp = sampling_metadata.top_p
+                top_p = tp[0].item() if tp.numel() > 0 else 1.0
+            return temperature, top_p
         except Exception as e:
             if self.debug:
                 logger.debug(f"Error extracting sampling params: {e}")

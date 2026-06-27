@@ -1,0 +1,527 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Detector Comparison: Gamma vs Z-score vs Power Law &mdash; vLLM-Watermark 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
+      <link rel="stylesheet" type="text/css" href="_static/custom.css?v=e98369cd" />
+
+  
+    <link rel="shortcut icon" href="_static/vLLM-WM-Logo.png"/>
+    <link rel="canonical" href="/vLLM-Watermark/detector_comparison.html" />
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script src="_static/custom.js?v=192d2930"></script>
+      <script>window.MathJax = {"tex": {"equationNumbers": {"autoNumber": "AMS"}, "extensions": ["AMSmath.js", "AMSsymbols.js"]}, "options": {"processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@4/tex-mml-chtml.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="OpenAI/Gumbel Watermarking" href="algorithms/openai.html" />
+    <link rel="prev" title="Performance Benchmarking" href="benchmark.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #437eb4" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            vLLM-Watermark
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Getting started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Performance evaluation</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="benchmark.html">Performance Benchmarking</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Detector Comparison: Gamma vs Z-score vs Power Law</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#background">Background</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-three-detection-statistics">The Three Detection Statistics</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#gamma-exponential-aaronson-2022">Gamma / Exponential (Aaronson 2022)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#z-score-normal-approximation">Z-score (normal approximation)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#power-law-lattimore-2026">Power Law (Lattimore 2026)</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#experimental-design">Experimental Design</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#results">Results</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#tpr-vs-sequence-length">TPR vs Sequence Length</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#power-law-vs-gamma">Power Law vs. Gamma</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#numeric-summary">Numeric Summary</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#conclusion">Conclusion</a></li>
+</ul>
+</li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Watermarking algorithms</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/openai.html">OpenAI/Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/openai_dr.html">Randomized Gumbel Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/maryland.html">KGW (Maryland) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/pf.html">Permute-and-Flip (PF) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/unigram.html">Unigram Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/synthid.html">SynthID Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/dip.html">DiPmark (DIP) Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/sweet.html">SWEET Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/blackbox.html">Black-Box Watermarking</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithms/alignment_resampling.html">Alignment Resampling</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #437eb4" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">vLLM-Watermark</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Detector Comparison: Gamma vs Z-score vs Power Law</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/detector_comparison.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="detector-comparison-gamma-vs-z-score-vs-power-law">
+<h1>Detector Comparison: Gamma vs Z-score vs Power Law<a class="headerlink" href="#detector-comparison-gamma-vs-z-score-vs-power-law" title="Link to this heading"></a></h1>
+<div style="background:#f8f9fa;border-left:4px solid #0072B2;padding:16px 20px;margin:20px 0;border-radius:0 6px 6px 0;">
+  <p style="margin:0;font-size:15px;line-height:1.7;color:#333;">
+    <strong>Summary.</strong>
+    The Gumbel/OpenAI watermark (Aaronson 2022) can be detected by several
+    test statistics. The standard detector uses the Gamma distribution
+    (exponential scores); Lattimore (2026) proposed a truncated power law
+    statistic that is theoretically near-optimal. We ran a comprehensive
+    24-setting sweep comparing all three — Gamma, Z-score, and Power Law —
+    across 8 temperatures × 3 nucleus-sampling values × 13 sequence lengths.
+    The result: all three detectors perform <em>practically equivalently</em>
+    on real LLM text, confirming
+    <a href="https://arxiv.org/abs/2603.30017" target="_blank">Lattimore's own
+    caveat in Section 6</a>.
+  </p>
+</div><nav class="contents local" id="on-this-page">
+<p class="topic-title">On this page</p>
+<ul class="simple">
+<li><p><a class="reference internal" href="#background" id="id1">Background</a></p></li>
+<li><p><a class="reference internal" href="#the-three-detection-statistics" id="id2">The Three Detection Statistics</a></p>
+<ul>
+<li><p><a class="reference internal" href="#gamma-exponential-aaronson-2022" id="id3">Gamma / Exponential (Aaronson 2022)</a></p></li>
+<li><p><a class="reference internal" href="#z-score-normal-approximation" id="id4">Z-score (normal approximation)</a></p></li>
+<li><p><a class="reference internal" href="#power-law-lattimore-2026" id="id5">Power Law (Lattimore 2026)</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#experimental-design" id="id6">Experimental Design</a></p></li>
+<li><p><a class="reference internal" href="#results" id="id7">Results</a></p>
+<ul>
+<li><p><a class="reference internal" href="#tpr-vs-sequence-length" id="id8">TPR vs Sequence Length</a></p></li>
+<li><p><a class="reference internal" href="#power-law-vs-gamma" id="id9">Power Law vs. Gamma</a></p></li>
+<li><p><a class="reference internal" href="#numeric-summary" id="id10">Numeric Summary</a></p></li>
+</ul>
+</li>
+<li><p><a class="reference internal" href="#conclusion" id="id11">Conclusion</a></p></li>
+</ul>
+</nav>
+<hr class="docutils" />
+<section id="background">
+<h2>Background<a class="headerlink" href="#background" title="Link to this heading"></a></h2>
+<p>The Gumbel/OpenAI watermark works by inserting a secret bias into the token
+sampling process. At each position <span class="math notranslate nohighlight">\(t\)</span>, the model draws Gumbel noise
+<span class="math notranslate nohighlight">\(U_{t,i} \sim \text{Uniform}[0,1]\)</span> for each token <span class="math notranslate nohighlight">\(i\)</span> in the
+vocabulary, then selects:</p>
+<div class="math notranslate nohighlight">
+\[A_t = \arg\max_i\; U_{t,i}^{1/p_i}\]</div>
+<p>where <span class="math notranslate nohighlight">\(p_i\)</span> is the softmax probability of token <span class="math notranslate nohighlight">\(i\)</span>. The key
+quantity is the “score” of the selected token:</p>
+<div class="math notranslate nohighlight">
+\[V_t = U_{t, A_t}\]</div>
+<p>Under the <strong>null hypothesis</strong> <span class="math notranslate nohighlight">\(H_0\)</span> (no watermark, uniform noise),
+<span class="math notranslate nohighlight">\(V_t \sim \text{Uniform}[0,1]\)</span>. Under the <strong>watermark hypothesis</strong>
+<span class="math notranslate nohighlight">\(H_1\)</span>, <span class="math notranslate nohighlight">\(V_t\)</span> is biased toward 1 — the token that won the
+argmax tends to have a large Uniform draw.</p>
+<p>All detection methods accumulate evidence from <span class="math notranslate nohighlight">\((V_1, \ldots, V_n)\)</span> and
+compute a p-value. They differ in <em>how</em> they convert <span class="math notranslate nohighlight">\(V_t\)</span> values into
+a test statistic.</p>
+</section>
+<section id="the-three-detection-statistics">
+<h2>The Three Detection Statistics<a class="headerlink" href="#the-three-detection-statistics" title="Link to this heading"></a></h2>
+<section id="gamma-exponential-aaronson-2022">
+<h3>Gamma / Exponential (Aaronson 2022)<a class="headerlink" href="#gamma-exponential-aaronson-2022" title="Link to this heading"></a></h3>
+<p>The canonical detector transforms each <span class="math notranslate nohighlight">\(V_t\)</span> into an exponential score:</p>
+<div class="math notranslate nohighlight">
+\[S_t = -\log(1 - V_t) \sim \text{Exp}(1) \quad \text{under } H_0\]</div>
+<p>The sum <span class="math notranslate nohighlight">\(T_n = \sum_{t=1}^n S_t \sim \Gamma(n, 1)\)</span>, which gives an
+exact p-value via the Gamma CDF:</p>
+<div class="math notranslate nohighlight">
+\[p = 1 - F_{\Gamma(n,1)}(T_n)\]</div>
+<p>This is the default detector in most implementations of the Gumbel watermark.</p>
+</section>
+<section id="z-score-normal-approximation">
+<h3>Z-score (normal approximation)<a class="headerlink" href="#z-score-normal-approximation" title="Link to this heading"></a></h3>
+<p>By the CLT, <span class="math notranslate nohighlight">\(\sqrt{n}(\bar{V} - 0.5)/\sigma_0 \to \mathcal{N}(0,1)\)</span> under
+<span class="math notranslate nohighlight">\(H_0\)</span>, where <span class="math notranslate nohighlight">\(\sigma_0^2 = 1/12\)</span> for the uniform distribution.
+The Z-score detector is:</p>
+<div class="math notranslate nohighlight">
+\[Z = \frac{\bar{V}_n - 0.5}{\sigma_0 / \sqrt{n}} = \frac{\sqrt{n}(\bar{V}_n - 0.5)}{1/\sqrt{12}}\]</div>
+<p>with p-value <span class="math notranslate nohighlight">\(p = 1 - \Phi(Z)\)</span>. This is an approximation that becomes
+exact as <span class="math notranslate nohighlight">\(n \to \infty\)</span>, but is slightly anti-conservative at small <span class="math notranslate nohighlight">\(n\)</span>
+(it tends to understate the p-value slightly, leading to marginally lower
+false-positive rates compared to the Gamma detector).</p>
+</section>
+<section id="power-law-lattimore-2026">
+<h3>Power Law (Lattimore 2026)<a class="headerlink" href="#power-law-lattimore-2026" title="Link to this heading"></a></h3>
+<div style="margin: 12px 0 16px; font-size: 13px; color: #555;">
+  Tor Lattimore (Google DeepMind) ·
+  <a href="https://arxiv.org/abs/2603.30017" target="_blank"
+     style="background:#6c757d;color:white;padding:3px 9px;border-radius:3px;text-decoration:none;font-size:11px;">
+    arXiv:2603.30017
+  </a>
+</div><div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This is a <strong>detection-only</strong> algorithm. It detects the same Gumbel/OpenAI
+watermark — it only replaces the test statistic. Use
+<code class="docutils literal notranslate"><span class="pre">WatermarkingAlgorithm.OPENAI</span></code> for generation and
+<code class="docutils literal notranslate"><span class="pre">DetectionAlgorithm.OPENAI_PL</span></code> for detection.</p>
+</div>
+<p>Lattimore’s starting point is the CDF of <span class="math notranslate nohighlight">\((V_t)\)</span> under the two
+hypotheses. Under <span class="math notranslate nohighlight">\(H_0\)</span>, <span class="math notranslate nohighlight">\(V_t \sim \text{Uniform}[0,1]\)</span>, so the
+empirical CDF tracks the diagonal. Under <span class="math notranslate nohighlight">\(H_1\)</span>, the empirical CDF is
+deflected upward — most strongly in the region <span class="math notranslate nohighlight">\(x \in [1/2, 1]\)</span>. The
+Gamma statistic weights all regions of the CDF equally. Lattimore shows this
+is suboptimal: the variance of the empirical process is smallest near the
+endpoints, so one should upweight deviations there.</p>
+<p>His statistic is a truncated power law:</p>
+<div class="math notranslate nohighlight">
+\[S(u) = \min\!\left(\frac{1}{\sqrt{\varepsilon}},\; \frac{1}{\sqrt{1-u}}\right) - \mu\]</div>
+<p>where <span class="math notranslate nohighlight">\(\varepsilon = \log(1/\delta)/n\)</span> and <span class="math notranslate nohighlight">\(\mu = 2 - \sqrt{\varepsilon}\)</span>
+ensures <span class="math notranslate nohighlight">\(\mathbb{E}[S(U)] = 0\)</span> under <span class="math notranslate nohighlight">\(H_0\)</span>. The threshold
+<span class="math notranslate nohighlight">\(\tau_\star\)</span> is calibrated via Monte Carlo (100K samples) so that:</p>
+<div class="math notranslate nohighlight">
+\[\mathbb{P}_0\!\left(\sum_{t=1}^n S(V_t) \geq \tau_\star\right) = \delta\]</div>
+<p>The <span class="math notranslate nohighlight">\(1/\sqrt{1-u}\)</span> term upweights <span class="math notranslate nohighlight">\(V_t\)</span> near 1; truncation at
+<span class="math notranslate nohighlight">\(1/\sqrt{\varepsilon}\)</span> controls variance. The analogy from classical
+statistics: the Anderson-Darling test weights the empirical process by its
+variance and is more powerful than the Kolmogorov-Smirnov test for the same
+reason.</p>
+<p><strong>Theorem 2</strong> (Lattimore): detection succeeds with probability
+<span class="math notranslate nohighlight">\(\geq 1 - 2\delta\)</span> whenever <span class="math notranslate nohighlight">\(\sum_{t=1}^n G_\varepsilon(P_t) \geq C\tau\)</span>,
+where <span class="math notranslate nohighlight">\(G_\varepsilon(p)\)</span> captures per-token detectability more finely
+than Aaronson’s average entropy <span class="math notranslate nohighlight">\(\bar{H}\)</span>. The improvement is largest
+when:</p>
+<ul class="simple">
+<li><p><strong>Entropy is heterogeneous</strong>: some positions are near-deterministic, others
+high-entropy. Aaronson’s bound penalizes this variance; <span class="math notranslate nohighlight">\(G_\varepsilon\)</span>
+handles it correctly.</p></li>
+<li><p><strong>Many rare tokens contribute</strong>: when the vocabulary has many moderate-probability
+tokens (Lattimore’s Example 10), the power law needs
+<span class="math notranslate nohighlight">\(n = \Omega(\log(n)\log(1/\delta)/\beta)\)</span> versus Aaronson’s
+<span class="math notranslate nohighlight">\(\Omega(\log(1/\delta)/\beta^2)\)</span> — a <span class="math notranslate nohighlight">\(\beta\)</span> factor improvement
+for small <span class="math notranslate nohighlight">\(\beta\)</span>.</p></li>
+</ul>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p><strong>Practical caveat (Section 6 of the paper).</strong> Lattimore writes: “its
+performance on language data seems to be slightly worse [than the exponential
+detector], presumably due to the additional logarithmic factor and/or constant
+factors.” The advantage is asymptotic. Our experiments below confirm this on
+real LLM outputs across 24 settings.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><strong>Short-sequence failure.</strong> At <span class="math notranslate nohighlight">\(n = 5\)</span> with <span class="math notranslate nohighlight">\(\delta = 0.05\)</span>,
+<span class="math notranslate nohighlight">\(\varepsilon = \log(20)/5 \approx 0.60\)</span>, so the truncation cap is
+<span class="math notranslate nohighlight">\(1/\sqrt{0.60} \approx 1.29\)</span>. This leaves almost no dynamic range —
+the detector is structurally near-powerless at very short sequences.</p>
+</div>
+</section>
+</section>
+<hr class="docutils" />
+<section id="experimental-design">
+<h2>Experimental Design<a class="headerlink" href="#experimental-design" title="Link to this heading"></a></h2>
+<p>We ran a full sweep on SageMaker (<code class="docutils literal notranslate"><span class="pre">ml.g5.2xlarge</span></code>,
+1× A10G GPU).</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 30.0%" />
+<col style="width: 70.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><p><strong>Model</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">meta-llama/Llama-3.2-1B</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Dataset</strong></p></td>
+<td><p>C4 (processed, English web text)</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Samples per setting</strong></p></td>
+<td><p>100 watermarked + 100 unwatermarked</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Watermark</strong></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OPENAI</span></code>, ngram=2, seed=42, payload=0</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Temperatures</strong></p></td>
+<td><p>0.1, 0.2, 0.3, 0.5, 0.7, 1.0, 1.5, 2.0 (8 values)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Nucleus sampling (top_p)</strong></p></td>
+<td><p>0.5, 0.9, 1.0 (3 values)</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Total settings</strong></p></td>
+<td><p>24 (8 × 3)</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Scored lengths</strong></p></td>
+<td><p>5, 8, 10, 15, 20, 30, 50, 75, 100, 150, 200, 300, 500 (13 values)</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Significance level</strong></p></td>
+<td><p>δ = 0.05 (FPR target ≤ 5%)</p></td>
+</tr>
+</tbody>
+</table>
+<p>Each setting tests all three detectors (Gamma, Z-score, Power Law) at the
+same threshold (δ = 0.05). Total data points: 24 × 13 × 3 = 936.</p>
+</section>
+<hr class="docutils" />
+<section id="results">
+<h2>Results<a class="headerlink" href="#results" title="Link to this heading"></a></h2>
+<section id="tpr-vs-sequence-length">
+<h3>TPR vs Sequence Length<a class="headerlink" href="#tpr-vs-sequence-length" title="Link to this heading"></a></h3>
+<div class="plot-grid">
+  <div class="plot-cell full-width">
+    <img src="_static/dc_v6_tpr_vs_n_panels.png" alt="TPR vs sequence length for four representative settings" />
+    <p class="plot-caption">
+      <strong>Figure 3.</strong> True positive rate vs. number of scored tokens
+      for four representative settings spanning the signal-strength range.
+      <em>Top-left</em>: Near-null signal (T=0.1, top_p=0.5) — all detectors
+      perform near-random even at 500 tokens. <em>Top-right</em>: Moderate signal
+      (T=0.5, top_p=1.0) — detectors reach ≈95% TPR around n=30–50.
+      <em>Bottom-left</em>: Strong signal (T=0.7, top_p=0.9) — convergence at
+      n=15. <em>Bottom-right</em>: Very strong signal (T=1.5, top_p=0.9) —
+      convergence at n=10. In all panels, Gamma, Z-score, and Power Law curves
+      are nearly indistinguishable.
+    </p>
+  </div>
+</div><p>The four panels span the range from detection being essentially impossible
+to trivially easy. In the <strong>weak-signal panel</strong> (T=0.1), TPR climbs slowly
+and never exceeds ≈55% even at 500 tokens — generation at low temperature
+produces near-deterministic text where the watermark leaves almost no trace.
+In the <strong>moderate-signal panel</strong> (T=0.3), detection becomes viable around
+n=50–100, reaching ≈70% TPR. In the <strong>strong and very-strong panels</strong>
+(T=0.7 and T=1.0), TPR surpasses 90% within 15–20 tokens and plateaus;
+the slight decline at large n is an artifact of n-gram correlation inflating
+FPR as the same context repeats.</p>
+<p>The key observation across all four panels: the three curves are nearly
+on top of each other at every length. There is no setting in which one
+detector is clearly superior for sequences of 10 or more tokens. The choice
+of detection statistic — Gamma, Z-score, or Power Law — does not materially
+affect detection power in practice.</p>
+</section>
+<section id="power-law-vs-gamma">
+<h3>Power Law vs. Gamma<a class="headerlink" href="#power-law-vs-gamma" title="Link to this heading"></a></h3>
+<p>While the overall performance is equivalent, there are two systematic
+micro-patterns visible on close inspection.</p>
+<div class="plot-grid">
+  <div class="plot-cell">
+    <img src="_static/dc_v6_pl_vs_gamma_n20.png" alt="Heatmap of Power Law TPR minus Gamma TPR at n=20" />
+    <p class="plot-caption">
+      <strong>Figure 4.</strong> Power Law TPR minus Gamma TPR at n=20 tokens.
+      Red = PL better; blue = Gamma better. Most cells are near zero. A slight
+      Gamma advantage appears in the moderate-signal regime (T=0.3–0.7, top_p=0.5),
+      while PL edges ahead in a few strong-signal cells. All differences are
+      within sampling noise (±0.08 for n=100 samples).
+    </p>
+  </div>
+  <div class="plot-cell">
+    <img src="_static/dc_v6_short_seq_comparison.png" alt="TPR at n=8 vs n=30 showing Power Law short-sequence failure" />
+    <p class="plot-caption">
+      <strong>Figure 5.</strong> Detector performance at n=8 (left) vs n=30
+      (right). At n=8, Power Law is consistently 10–20% behind Gamma/Z-score
+      across all signal strengths — a structural consequence of the
+      ε-truncation losing dynamic range. By n=30 the gap closes and all three
+      converge.
+    </p>
+  </div>
+</div></section>
+<section id="numeric-summary">
+<h3>Numeric Summary<a class="headerlink" href="#numeric-summary" title="Link to this heading"></a></h3>
+<p>TPR at δ = 0.05 for two operating points (n=20 and n=50) across seven
+settings. Read across a row to compare detectors; read down a column to
+see how detection power varies with signal strength.</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 8.0%" />
+<col style="width: 12.0%" />
+<col style="width: 12.0%" />
+<col style="width: 12.0%" />
+<col style="width: 12.0%" />
+<col style="width: 12.0%" />
+<col style="width: 12.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Setting</p></th>
+<th class="head"><p><span class="math notranslate nohighlight">\(\bar{V}_t\)</span></p></th>
+<th class="head"><p>Gamma (20)</p></th>
+<th class="head"><p>Z-score (20)</p></th>
+<th class="head"><p>Power Law (20)</p></th>
+<th class="head"><p>Gamma (50)</p></th>
+<th class="head"><p>Z-score (50)</p></th>
+<th class="head"><p>Power Law (50)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>T=0.1, p=0.5</p></td>
+<td><p>0.51</p></td>
+<td><p>0.12</p></td>
+<td><p>0.06</p></td>
+<td><p>0.12</p></td>
+<td><p>0.10</p></td>
+<td><p>0.08</p></td>
+<td><p>0.13</p></td>
+</tr>
+<tr class="row-odd"><td><p>T=0.2, p=1.0</p></td>
+<td><p>0.56</p></td>
+<td><p>0.38</p></td>
+<td><p>0.29</p></td>
+<td><p>0.38</p></td>
+<td><p>0.57</p></td>
+<td><p>0.44</p></td>
+<td><p>0.50</p></td>
+</tr>
+<tr class="row-even"><td><p>T=0.3, p=0.9</p></td>
+<td><p>0.58</p></td>
+<td><p>0.39</p></td>
+<td><p>0.32</p></td>
+<td><p>0.44</p></td>
+<td><p>0.58</p></td>
+<td><p>0.44</p></td>
+<td><p>0.57</p></td>
+</tr>
+<tr class="row-odd"><td><p>T=0.5, p=1.0</p></td>
+<td><p>0.66</p></td>
+<td><p>0.88</p></td>
+<td><p>0.81</p></td>
+<td><p>0.81</p></td>
+<td><p>0.95</p></td>
+<td><p>0.93</p></td>
+<td><p>0.95</p></td>
+</tr>
+<tr class="row-even"><td><p>T=0.7, p=0.9</p></td>
+<td><p>0.68</p></td>
+<td><p>0.91</p></td>
+<td><p>0.88</p></td>
+<td><p>0.89</p></td>
+<td><p>0.95</p></td>
+<td><p>0.94</p></td>
+<td><p>0.95</p></td>
+</tr>
+<tr class="row-odd"><td><p>T=1.0, p=1.0</p></td>
+<td><p>0.84</p></td>
+<td><p>0.99</p></td>
+<td><p>0.99</p></td>
+<td><p>0.99</p></td>
+<td><p>0.99</p></td>
+<td><p>0.99</p></td>
+<td><p>0.99</p></td>
+</tr>
+<tr class="row-even"><td><p>T=1.5, p=0.9</p></td>
+<td><p>0.96</p></td>
+<td><p>1.00</p></td>
+<td><p>1.00</p></td>
+<td><p>1.00</p></td>
+<td><p>0.97</p></td>
+<td><p>0.97</p></td>
+<td><p>0.97</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<hr class="docutils" />
+<section id="conclusion">
+<h2>Conclusion<a class="headerlink" href="#conclusion" title="Link to this heading"></a></h2>
+<p>Power Law detection is theoretically elegant — it is provably near-optimal in
+a distribution-dependent sense — but on real Llama outputs across a broad
+temperature sweep, it is <strong>practically indistinguishable from the Gamma
+(exponential) detector</strong> at typical sequence lengths and signal strengths.</p>
+<p>This is not a failure of the implementation: it matches Lattimore’s own
+observation from Section 6 of the paper:</p>
+<blockquote>
+<div><p><em>“its performance on language data seems to be slightly worse [than the
+exponential detector], presumably due to the additional logarithmic factor
+and/or constant factors.”</em></p>
+</div></blockquote>
+<p>The theoretical improvement is asymptotic. In practice:</p>
+<ul class="simple">
+<li><p><strong>Gamma</strong> is the best default: exact p-values, well-calibrated FPR, no
+structural failure at short sequences.</p></li>
+<li><p><strong>Power Law</strong> is appropriate when the theoretical guarantees matter (e.g.,
+proving detection bounds), but avoid it for n &lt; 10 where ε-truncation kills
+its power.</p></li>
+<li><p><strong>Z-score</strong> is the most conservative (lowest FPR), useful when false-positive
+cost is high and you can accept slightly reduced TPR.</p></li>
+</ul>
+<p>The more important lesson is about <strong>temperature</strong>: if you control generation
+parameters, running at T ≥ 0.7 with top_p = 0.9–1.0 gives a strong watermark
+signal detectable in ~15–20 tokens. Low-temperature generation (T &lt; 0.3)
+makes the watermark nearly invisible regardless of detector choice.</p>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="benchmark.html" class="btn btn-neutral float-left" title="Performance Benchmarking" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="algorithms/openai.html" class="btn btn-neutral float-right" title="OpenAI/Gumbel Watermarking" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2024, Apurv Verma.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
